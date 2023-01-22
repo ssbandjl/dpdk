@@ -9,3 +9,8 @@ API documentation, and sample application information.
 
 For questions and usage discussions, subscribe to: users@dpdk.org
 Report bugs and issues to the development mailing list: dev@dpdk.org
+
+
+程序员指导: http://doc.dpdk.org/guides/prog_guide/index.html doc/guides/prog_guide
+基本转发示例: examples/skeleton/basicfwd.c
+环形缓冲区原理: http://doc.dpdk.org/guides/prog_guide/ring_lib.html 临时指针
