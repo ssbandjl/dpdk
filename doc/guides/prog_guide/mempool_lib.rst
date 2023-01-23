@@ -3,7 +3,7 @@
 
 .. _Mempool_Library:
 
-Mempool Library
+Mempool Library 内存池
 ===============
 
 A memory pool is an allocator of a fixed-sized object.
@@ -11,6 +11,7 @@ In the DPDK, it is identified by name and uses a mempool handler to store free o
 The default mempool handler is ring based.
 It provides some other optional services such as a per-core object cache and
 an alignment helper to ensure that objects are padded to spread them equally on all DRAM or DDR3 channels.
+内存池是固定大小对象的分配器。 在 DPDK 中，它通过名称来标识，并使用内存池处理程序来存储空闲对象。 默认的内存池处理程序是基于环的。 它提供了一些其他可选服务，例如每核对象缓存和对齐助手，以确保填充对象以将它们平均分布在所有 DRAM 或 DDR3 通道上。
 
 This library is used by the :ref:`Mbuf Library <Mbuf_Library>`.
 
@@ -19,6 +20,7 @@ Cookies
 
 In debug mode, cookies are added at the beginning and end of allocated blocks.
 The allocated objects then contain overwrite protection fields to help debugging buffer overflows.
+在调试模式下，cookie 被添加到分配块的开头和结尾。 分配的对象然后包含覆盖保护字段以帮助调试缓冲区溢出。
 
 Debug mode is disabled by default,
 but can be enabled by setting ``RTE_LIBRTE_MEMPOOL_DEBUG`` in ``config/rte_config.h``.
@@ -28,6 +30,7 @@ Stats
 
 In stats mode, statistics about get from/put in the pool are stored in the mempool structure.
 Statistics are per-lcore to avoid concurrent access to statistics counters.
+在统计模式下，关于从池中获取/放入池的统计信息存储在 mempool 结构中。 统计数据是每个内核以避免并发访问统计计数器
 
 Stats mode is disabled by default,
 but can be enabled by setting ``RTE_LIBRTE_MEMPOOL_STATS`` in ``config/rte_config.h``.
@@ -88,12 +91,15 @@ via the cache with many fewer locks on the actual memory pool structure.
 In this way, each core has full access to its own cache (with locks) of free objects and
 only when the cache fills does the core need to shuffle some of the free objects back to the pools ring or
 obtain more objects when the cache is empty.
+就 CPU 使用率而言，多个内核访问内存池的空闲缓冲区环的成本可能很高，因为每次访问都需要比较和设置 (CAS) 操作。 为了避免对内存池环有太多访问请求，内存池分配器可以维护每个核心缓存并通过缓存对实际内存池结构上的锁进行批量请求。 这样，每个核心都可以完全访问自己的空闲对象缓存（带锁），只有当缓存已满时，核心才需要将一些空闲对象洗回池环或在缓存满时获取更多对象 空的。
 
 While this may mean a number of buffers may sit idle on some core's cache,
 the speed at which a core can access its own cache for a specific memory pool without locks provides performance gains.
+虽然这可能意味着一些缓冲区可能在某些内核的缓存上闲置，但内核可以在没有锁定的情况下访问其自己的特定内存池缓存的速度提供了性能提升。
 
 The cache is composed of a small, per-core table of pointers and its length (used as a stack).
 This internal cache can be enabled or disabled at creation of the pool.
+缓存由一个小型的、每个核心的指针表及其长度（用作堆栈）组成。 可以在创建池时启用或禁用此内部缓存。
 
 The maximum size of the cache is static and is defined at compilation time (RTE_MEMPOOL_CACHE_MAX_SIZE).
 
@@ -103,7 +109,7 @@ The maximum size of the cache is static and is defined at compilation time (RTE_
 
 .. figure:: img/mempool.*
 
-   A mempool in Memory with its Associated Ring
+   A mempool in Memory with its Associated Ring 内存中的内存池及其关联环
 
 Alternatively to the internal default per-lcore local cache, an application can create and manage external caches through the ``rte_mempool_cache_create()``, ``rte_mempool_cache_free()`` and ``rte_mempool_cache_flush()`` calls.
 These user-owned caches can be explicitly passed to ``rte_mempool_generic_put()`` and ``rte_mempool_generic_get()``.

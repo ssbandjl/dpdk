@@ -169,6 +169,7 @@ lcore_main(void)
  * The main function, which does initialization and calls the per-lcore
  * functions.
  */
+// ./<build_dir>/examples/dpdk-skeleton -l 1 -n 4
 int
 main(int argc, char *argv[])
 {
