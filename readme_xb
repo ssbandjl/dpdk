@@ -1,0 +1,106 @@
+源码分析-大页初始化: https://zzqcn.github.io/opensource/dpdk/code-analysis/mem.html
+UIO原理和流程简析: https://blog.csdn.net/ApeLife/article/details/100751359
+
+
+
+Longest Prefix matching: lib\lpm\rte_lpm.h
+
+
+rte_distributor_process -> 处理一组数据包并将其分发给worker
+
+
+testpmd>
+
+
+ptp presision timing protocol
+
+
+hugepage:
+大页信息初始化
+eal_hugepage_info_init
+    hugepage_info_init
+    create_shared_memory
+    memcpy
+    munmap
+
+
+
+大页内存初始化
+rte_eal_memory_init
+    rte_eal_memseg_init
+    eal_memalloc_init
+    rte_eal_hugepage_init rte_eal_hugepage_attach
+        map_all_hugepages
+
+
+
+
+uio:
+dpdk-devbind.py
+
+
+
+receive pkt:
+rte_eth_rx_burst
+    eth_igb_recv_pkts
+        if (! (staterr & rte_cpu_to_le_32(E1000_RXD_STAT_DD))) -> check dma dd flag
+
+
+
+send pkt:
+rte_eth_tx_burst
+    tx_queues -> rte_eth_tx_burst
+
+
+
+how huge page init?
+
+
+//主进程创建/var/run/.rte_config文件
+mem_cfg_fd = open(pathname, O_RDWR | O_CREAT, 0660);
+//主进程映射/var/run/.rte_config到主进程空间
+rte_mem_cfg_addr = mmap(rte_mem_cfg_addr, sizeof(*rte_config.mem_config),PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0);
+
+static void rte_config_init(void)
+{
+	switch (rte_config.process_type)
+	{
+		case RTE_PROC_PRIMARY:
+			 //主进程创建共享内存配置
+			rte_eal_config_create();
+			break;
+		case RTE_PROC_SECONDARY:
+			//从进程打开共享内存配置后，映射到从进程自己的地址空间
+			rte_eal_config_attach();
+			//睡眠等待主进程设置完成共享内存配置
+			rte_eal_mcfg_wait_complete(rte_config.mem_config);
+			//从进程重新映射共享内存配置
+			rte_eal_config_reattach();
+	}
+}
+
+//从进程打开/var/run/.rte_config文件
+mem_cfg_fd = open(pathname, O_RDWR);
+//从进程将/var/run/.rte_config文件内容映射到从进程空间
+rte_mem_cfg_addr = mmap(NULL, sizeof(*rte_config.mem_config),PROT_READ | PROT_WRITE, MAP_SHARED, mem_cfg_fd, 0
+
+思考个问题，dpdk如何保证在主从进程模式下，物理地址相同，对应的主从进程的虚拟地址也相同呢？答案是主进程mmap映射后，主进程会将mmap映射后的虚拟地址放到共享内存中rte_config.mem_config。从进程会进行2次共享内存映射，第一次调用mmap进行映射时，第一个参数为空，表示由内核选择一个虚拟地址空间，从进程将会映射到这个由内核选择的虚拟地址空间中，此时从进程就可以从共享内存中获取到主进程mmap后的虚拟地址。之后从进程第二次调用mmap进行映射，传递的第一个参数不为空了，而是主进程mmap映射后的虚拟地址，相当于从进程直接从这个虚拟地址开始映射，从而保证了主从进程的虚拟地址空间一样，对应的物理空间也一样。主从进程的映射逻辑，都在rte_config_init函数中
+原文链接：https://blog.csdn.net/ApeLife/article/details/99700882
+
+
+
+rte_malloc
+
+
+eth_igb_dev_init
+read register or write:
+E1000_PCI_REG_ADDR
+E1000_READ_REG
+E1000_WRITE_REG
+
+e1000_init_nvm_ops_generic
+e1000_init_mbx_ops_generic -> mailbox
+
+
+
+
