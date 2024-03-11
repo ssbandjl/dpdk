@@ -1,0 +1,488 @@
+[xb@s11 dpdk-stable-22.11.2]$ meson setup -Dbuildtype=debug build
+The Meson build system
+Version: 1.2.2
+Source dir: /home/xb/project/dpdk-stable-22.11.2
+Build dir: /home/xb/project/dpdk-stable-22.11.2/build
+Build type: native build
+Program cat found: YES (/usr/bin/cat)
+Project name: DPDK
+Project version: 22.11.2
+C compiler for the host machine: cc (gcc 11.4.0 "cc (GCC) 11.4.0")
+C linker for the host machine: cc ld.bfd 2.38
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Program pkg-config found: YES (/usr/bin/pkg-config)
+Program check-symbols.sh found: YES (/home/xb/project/dpdk-stable-22.11.2/buildtools/check-symbols.sh)
+Program options-ibverbs-static.sh found: YES (/home/xb/project/dpdk-stable-22.11.2/buildtools/options-ibverbs-static.sh)
+Program objdump found: YES (/usr/bin/objdump)
+Program python3 found: YES (/usr/local/python3/py38/bin/python)
+Program cat found: YES (/usr/bin/cat)
+Checking for size of "void *" : 8 
+Checking for size of "void *" : 8 (cached)
+Library m found: YES
+Library numa found: YES
+Has header "numaif.h" : YES 
+Library fdt found: YES
+Has header "fdt.h" : YES 
+Library execinfo found: NO
+Has header "execinfo.h" : YES 
+Found pkg-config: /usr/bin/pkg-config (0.29.1)
+Run-time dependency libarchive found: NO (tried pkgconfig)
+Run-time dependency libbsd found: NO (tried pkgconfig)
+Run-time dependency jansson found: NO (tried pkgconfig)
+Run-time dependency openssl found: NO (tried pkgconfig)
+Run-time dependency libpcap found: NO (tried pkgconfig)
+Library pcap found: NO
+Compiler for C supports arguments -Wcast-qual: YES 
+Compiler for C supports arguments -Wdeprecated: YES 
+Compiler for C supports arguments -Wformat: YES 
+Compiler for C supports arguments -Wformat-nonliteral: YES 
+Compiler for C supports arguments -Wformat-security: YES 
+Compiler for C supports arguments -Wmissing-declarations: YES 
+Compiler for C supports arguments -Wmissing-prototypes: YES 
+Compiler for C supports arguments -Wnested-externs: YES 
+Compiler for C supports arguments -Wold-style-definition: YES 
+Compiler for C supports arguments -Wpointer-arith: YES 
+Compiler for C supports arguments -Wsign-compare: YES 
+Compiler for C supports arguments -Wstrict-prototypes: YES 
+Compiler for C supports arguments -Wundef: YES 
+Compiler for C supports arguments -Wwrite-strings: YES 
+Compiler for C supports arguments -Wno-address-of-packed-member: YES 
+Compiler for C supports arguments -Wno-packed-not-aligned: YES 
+Compiler for C supports arguments -Wno-missing-field-initializers: YES 
+Compiler for C supports arguments -Wno-zero-length-bounds: YES 
+Compiler for C supports arguments -mavx512f: YES 
+Checking if "AVX512 checking" compiles: YES 
+Fetching value of define "__SSE4_2__" : 1 
+Fetching value of define "__AES__" : 1 
+Fetching value of define "__AVX__" : 1 
+Fetching value of define "__AVX2__" : 1 
+Fetching value of define "__AVX512BW__" : 1 
+Fetching value of define "__AVX512CD__" : 1 
+Fetching value of define "__AVX512DQ__" : 1 
+Fetching value of define "__AVX512F__" : 1 
+Fetching value of define "__AVX512VL__" : 1 
+Fetching value of define "__PCLMUL__" : 1 
+Fetching value of define "__RDRND__" : 1 
+Fetching value of define "__RDSEED__" : 1 
+Fetching value of define "__VPCLMULQDQ__" :  
+Compiler for C supports arguments -Wno-format-truncation: YES 
+Checking for function "getentropy" : NO 
+Fetching value of define "__PCLMUL__" : 1 (cached)
+Fetching value of define "__AVX512F__" : 1 (cached)
+Fetching value of define "__AVX512BW__" : 1 (cached)
+Fetching value of define "__AVX512DQ__" : 1 (cached)
+Fetching value of define "__AVX512VL__" : 1 (cached)
+Fetching value of define "__VPCLMULQDQ__" :  (cached)
+Compiler for C supports arguments -mpclmul: YES 
+Compiler for C supports arguments -maes: YES 
+Compiler for C supports arguments -mavx512f: YES (cached)
+Compiler for C supports arguments -mavx512bw: YES 
+Compiler for C supports arguments -mavx512dq: YES 
+Compiler for C supports arguments -mavx512vl: YES 
+Compiler for C supports arguments -mvpclmulqdq: YES 
+Compiler for C supports arguments -mavx2: YES 
+Compiler for C supports arguments -mavx: YES 
+Fetching value of define "__AVX2__" : 1 (cached)
+Fetching value of define "__AVX512F__" : 1 (cached)
+Fetching value of define "__AVX512VL__" : 1 (cached)
+Fetching value of define "__AVX512CD__" : 1 (cached)
+Fetching value of define "__AVX512BW__" : 1 (cached)
+Run-time dependency libelf found: YES 0.176
+lib/bpf/meson.build:43: WARNING: libpcap is missing, rte_bpf_convert API will be disabled
+Fetching value of define "__AVX512F__" : 1 (cached)
+Fetching value of define "__AVX512DQ__" : 1 (cached)
+Fetching value of define "__AVX512IFMA__" :  
+Compiler for C supports arguments -mavx512f -mavx512dq -mavx512ifma: YES 
+Compiler for C supports arguments -Wno-cast-qual: YES 
+Has header "linux/userfaultfd.h" : YES 
+Fetching value of define "__AVX512F__" : 1 (cached)
+Fetching value of define "__AVX512DQ__" : 1 (cached)
+Fetching value of define "__AVX512BW__" : 1 (cached)
+Compiler for C supports arguments -Wno-format-truncation: YES (cached)
+Compiler for C supports arguments -Wno-cast-qual: YES (cached)
+Compiler for C supports arguments -Wno-pointer-arith: YES 
+Compiler for C supports arguments -Wno-pointer-to-int-cast: YES 
+Run-time dependency libmusdk found: NO (tried pkgconfig)
+Compiler for C supports arguments -Wno-cast-qual: YES (cached)
+Compiler for C supports arguments -Wno-pointer-arith: YES (cached)
+Compiler for C supports arguments -std=c11: YES 
+Compiler for C supports arguments -Wno-strict-prototypes: YES 
+Compiler for C supports arguments -D_BSD_SOURCE: YES 
+Compiler for C supports arguments -D_DEFAULT_SOURCE: YES 
+Compiler for C supports arguments -D_XOPEN_SOURCE=600: YES 
+Run-time dependency libmlx5 found: YES 1.24.47.0
+Run-time dependency libibverbs found: YES 1.14.47.0
+Library mtcr_ul found: YES
+Header "infiniband/verbs.h" has symbol "IBV_RX_HASH_IPSEC_SPI" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/verbs.h" has symbol "IBV_ACCESS_RELAXED_ORDERING " with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5DV_CQE_RES_FORMAT_CSUM_STRIDX" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5DV_CONTEXT_MASK_TUNNEL_OFFLOADS" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5DV_CQ_INIT_ATTR_FLAGS_CQE_PAD" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_create_flow_action_packet_reformat" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/verbs.h" has symbol "IBV_FLOW_SPEC_MPLS" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/verbs.h" has symbol "IBV_WQ_FLAGS_PCI_WRITE_END_PADDING" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/verbs.h" has symbol "IBV_WQ_FLAG_RX_END_PADDING" with dependencies libmlx5, libibverbs: NO 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_query_devx_port" with dependencies libmlx5, libibverbs: NO 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_query_port" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dr_action_create_dest_ib_port" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_devx_obj_create" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5DV_FLOW_ACTION_COUNTERS_DEVX" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5DV_FLOW_ACTION_DEFAULT_MISS" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_devx_obj_query_async" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_devx_qp_query" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_pp_alloc" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dr_action_create_dest_devx_tir" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_devx_get_event" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dr_action_create_flow_meter" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5_MMAP_GET_NC_PAGES_CMD" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5DV_DR_DOMAIN_TYPE_NIC_RX" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5DV_DR_DOMAIN_TYPE_FDB" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dr_action_create_push_vlan" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_alloc_var" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5_OPCODE_ENHANCED_MPSW" with dependencies libmlx5, libibverbs: NO 
+Header "infiniband/mlx5dv.h" has symbol "MLX5_OPCODE_SEND_EN" with dependencies libmlx5, libibverbs: NO 
+Header "infiniband/mlx5dv.h" has symbol "MLX5_OPCODE_WAIT" with dependencies libmlx5, libibverbs: NO 
+Header "infiniband/mlx5dv.h" has symbol "MLX5_OPCODE_ACCESS_ASO" with dependencies libmlx5, libibverbs: NO 
+Header "linux/ethtool.h" has symbol "SUPPORTED_40000baseKR4_Full" with dependencies libmlx5, libibverbs: YES 
+Header "linux/ethtool.h" has symbol "SUPPORTED_40000baseCR4_Full" with dependencies libmlx5, libibverbs: YES 
+Header "linux/ethtool.h" has symbol "SUPPORTED_40000baseSR4_Full" with dependencies libmlx5, libibverbs: YES 
+Header "linux/ethtool.h" has symbol "SUPPORTED_40000baseLR4_Full" with dependencies libmlx5, libibverbs: YES 
+Header "linux/ethtool.h" has symbol "SUPPORTED_56000baseKR4_Full" with dependencies libmlx5, libibverbs: YES 
+Header "linux/ethtool.h" has symbol "SUPPORTED_56000baseCR4_Full" with dependencies libmlx5, libibverbs: YES 
+Header "linux/ethtool.h" has symbol "SUPPORTED_56000baseSR4_Full" with dependencies libmlx5, libibverbs: YES 
+Header "linux/ethtool.h" has symbol "SUPPORTED_56000baseLR4_Full" with dependencies libmlx5, libibverbs: YES 
+Header "linux/ethtool.h" has symbol "ETHTOOL_LINK_MODE_25000baseCR_Full_BIT" with dependencies libmlx5, libibverbs: YES 
+Header "linux/ethtool.h" has symbol "ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT" with dependencies libmlx5, libibverbs: YES 
+Header "linux/ethtool.h" has symbol "ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT" with dependencies libmlx5, libibverbs: YES 
+Header "linux/if_link.h" has symbol "IFLA_NUM_VF" with dependencies libmlx5, libibverbs: YES 
+Header "linux/if_link.h" has symbol "IFLA_EXT_MASK" with dependencies libmlx5, libibverbs: YES 
+Header "linux/if_link.h" has symbol "IFLA_PHYS_SWITCH_ID" with dependencies libmlx5, libibverbs: YES 
+Header "linux/if_link.h" has symbol "IFLA_PHYS_PORT_NAME" with dependencies libmlx5, libibverbs: YES 
+Header "rdma/rdma_netlink.h" has symbol "RDMA_NL_NLDEV" with dependencies libmlx5, libibverbs: YES 
+Header "rdma/rdma_netlink.h" has symbol "RDMA_NLDEV_CMD_GET" with dependencies libmlx5, libibverbs: YES 
+Header "rdma/rdma_netlink.h" has symbol "RDMA_NLDEV_CMD_PORT_GET" with dependencies libmlx5, libibverbs: YES 
+Header "rdma/rdma_netlink.h" has symbol "RDMA_NLDEV_ATTR_DEV_INDEX" with dependencies libmlx5, libibverbs: YES 
+Header "rdma/rdma_netlink.h" has symbol "RDMA_NLDEV_ATTR_DEV_NAME" with dependencies libmlx5, libibverbs: YES 
+Header "rdma/rdma_netlink.h" has symbol "RDMA_NLDEV_ATTR_PORT_INDEX" with dependencies libmlx5, libibverbs: YES 
+Header "rdma/rdma_netlink.h" has symbol "RDMA_NLDEV_ATTR_PORT_STATE" with dependencies libmlx5, libibverbs: YES 
+Header "rdma/rdma_netlink.h" has symbol "RDMA_NLDEV_ATTR_NDEV_INDEX" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dump_dr_domain" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dr_action_create_flow_sampler" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dr_domain_set_reclaim_device_memory" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dr_action_create_dest_array" with dependencies libmlx5, libibverbs: YES 
+Header "linux/devlink.h" has symbol "DEVLINK_GENL_NAME" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dr_action_create_aso" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/verbs.h" has symbol "INFINIBAND_VERBS_H" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5_WQE_UMR_CTRL_FLAG_INLINE" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dump_dr_rule" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "MLX5DV_DR_ACTION_FLAGS_ASO_CT_DIRECTION_INITIATOR" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dr_domain_allow_duplicate_rules" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/verbs.h" has symbol "ibv_reg_mr_iova" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/verbs.h" has symbol "ibv_import_device" with dependencies libmlx5, libibverbs: YES 
+Header "infiniband/mlx5dv.h" has symbol "mlx5dv_dr_action_create_dest_root_table" with dependencies libmlx5, libibverbs: YES 
+Header "mstflint/mtcr.h" has symbol "mopen" with dependencies libmlx5, libibverbs: YES 
+Checking whether type "struct mlx5dv_sw_parsing_caps" has member "sw_parsing_offloads" with dependencies libmlx5, libibverbs: YES 
+Checking whether type "struct ibv_counter_set_init_attr" has member "counter_set_id" with dependencies libmlx5, libibverbs: NO 
+Checking whether type "struct ibv_counters_init_attr" has member "comp_mask" with dependencies libmlx5, libibverbs: YES 
+Checking whether type "struct mlx5dv_devx_uar" has member "mmap_off" with dependencies libmlx5, libibverbs: YES 
+Checking whether type "struct mlx5dv_flow_matcher_attr" has member "ft_type" with dependencies libmlx5, libibverbs: YES 
+Configuring mlx5_autoconf.h using configuration
+Run-time dependency libcrypto found: NO (tried pkgconfig)
+Library IPSec_MB found: NO
+Run-time dependency libcrypto found: NO (tried pkgconfig)
+Compiler for C supports arguments -Wdisabled-optimization: YES 
+Compiler for C supports arguments -Waggregate-return: YES 
+Compiler for C supports arguments -Wbad-function-cast: YES 
+Compiler for C supports arguments -Wno-sign-compare: YES 
+Compiler for C supports arguments -Wno-unused-parameter: YES 
+Compiler for C supports arguments -Wno-unused-variable: YES 
+Compiler for C supports arguments -Wno-empty-body: YES 
+Compiler for C supports arguments -Wno-unused-but-set-variable: YES 
+Compiler for C supports arguments -Wno-pointer-arith: YES (cached)
+Compiler for C supports arguments -Wno-pointer-arith: YES (cached)
+Run-time dependency libxdp found: NO (tried pkgconfig)
+Run-time dependency libbpf found: NO (tried pkgconfig)
+Library bpf found: NO
+Has header "linux/if_xdp.h" : NO 
+Run-time dependency zlib found: YES 1.2.7
+Compiler for C supports arguments -DSUPPORT_CFA_HW_ALL=1: YES 
+Fetching value of define "__AVX2__" : 1 (cached)
+Compiler for C supports arguments -flax-vector-conversions: YES 
+Compiler for C supports arguments -Wno-strict-aliasing: YES 
+Compiler for C supports arguments -Wno-pointer-arith: YES (cached)
+Compiler for C supports arguments -Wno-uninitialized: YES 
+Compiler for C supports arguments -Wno-unused-parameter: YES (cached)
+Compiler for C supports arguments -Wno-unused-variable: YES (cached)
+Compiler for C supports arguments -Wno-misleading-indentation: YES 
+Compiler for C supports arguments -Wno-implicit-fallthrough: YES 
+Fetching value of define "__AVX2__" : 1 (cached)
+Compiler for C supports arguments -Wno-unused-parameter: YES (cached)
+Compiler for C supports arguments -Wno-unused-value: YES 
+Compiler for C supports arguments -Wno-strict-aliasing: YES (cached)
+Compiler for C supports arguments -Wno-format-extra-args: YES 
+Compiler for C supports arguments -Wno-unused-variable: YES (cached)
+Compiler for C supports arguments -Wno-implicit-fallthrough: YES (cached)
+Compiler for C supports arguments -Wno-sign-compare: YES (cached)
+Compiler for C supports arguments -Wno-unused-value: YES (cached)
+Compiler for C supports arguments -Wno-format: YES 
+Compiler for C supports arguments -Wno-format-security: YES 
+Compiler for C supports arguments -Wno-format-nonliteral: YES 
+Compiler for C supports arguments -Wno-strict-aliasing: YES (cached)
+Compiler for C supports arguments -Wno-unused-but-set-variable: YES (cached)
+Compiler for C supports arguments -Wno-unused-parameter: YES (cached)
+Fetching value of define "__AVX2__" : 1 (cached)
+Fetching value of define "__AVX512F__" : 1 (cached)
+Fetching value of define "__AVX512BW__" : 1 (cached)
+Compiler for C supports arguments -mavx512f: YES (cached)
+Compiler for C supports arguments -mavx512bw: YES (cached)
+Compiler for C supports arguments -march=skylake-avx512: YES 
+Fetching value of define "__AVX2__" : 1 (cached)
+Fetching value of define "__AVX512F__" : 1 (cached)
+Fetching value of define "__AVX512BW__" : 1 (cached)
+Compiler for C supports arguments -mavx512f: YES (cached)
+Compiler for C supports arguments -mavx512bw: YES (cached)
+Compiler for C supports arguments -march=skylake-avx512: YES (cached)
+Compiler for C supports arguments -Wno-unused-value: YES (cached)
+Compiler for C supports arguments -Wno-unused-but-set-variable: YES (cached)
+Compiler for C supports arguments -Wno-unused-variable: YES (cached)
+Compiler for C supports arguments -Wno-unused-parameter: YES (cached)
+Compiler for C supports arguments -Wno-array-bounds: YES 
+Fetching value of define "__AVX2__" : 1 (cached)
+Fetching value of define "__AVX512F__" : 1 (cached)
+Fetching value of define "__AVX512BW__" : 1 (cached)
+Compiler for C supports arguments -mavx512f: YES (cached)
+Compiler for C supports arguments -mavx512bw: YES (cached)
+Compiler for C supports arguments -march=skylake-avx512: YES (cached)
+Fetching value of define "__AVX512F__" : 1 (cached)
+Fetching value of define "__AVX512BW__" : 1 (cached)
+Compiler for C supports arguments -mavx512f: YES (cached)
+Compiler for C supports arguments -mavx512bw: YES (cached)
+Compiler for C supports arguments -march=skylake-avx512: YES (cached)
+Compiler for C supports arguments -Wno-unused-value: YES (cached)
+Compiler for C supports arguments -Wno-unused-but-set-variable: YES (cached)
+Compiler for C supports arguments -Wno-unused-parameter: YES (cached)
+Message: Disabling kni [drivers/net/kni]: missing internal dependency "kni"
+Run-time dependency libibverbs found: YES 1.14.47.0
+Found CMake: /usr/bin/cmake (2.8.12.2)
+WARNING: The version of CMake /usr/bin/cmake is 2.8.12.2 but version >=3.4 is required
+Run-time dependency libmana found: NO (tried pkgconfig and cmake)
+Library mana found: NO
+Run-time dependency libmlx4 found: NO (tried pkgconfig)
+Library mlx4 found: NO
+Compiler for C supports arguments -std=c11: YES (cached)
+Compiler for C supports arguments -Wno-strict-prototypes: YES (cached)
+Compiler for C supports arguments -D_BSD_SOURCE: YES (cached)
+Compiler for C supports arguments -D_DEFAULT_SOURCE: YES (cached)
+Compiler for C supports arguments -D_XOPEN_SOURCE=600: YES (cached)
+Run-time dependency libmusdk found: NO (tried pkgconfig)
+Run-time dependency libmusdk found: NO (tried pkgconfig)
+Run-time dependency netcope-common found: NO (tried pkgconfig)
+Compiler for C supports arguments -Wno-pointer-arith: YES (cached)
+Compiler for C supports arguments -Wno-unused-parameter: YES (cached)
+Compiler for C supports arguments -Wno-sign-compare: YES (cached)
+Compiler for C supports arguments -Wno-missing-prototypes: YES 
+Compiler for C supports arguments -Wno-cast-qual: YES (cached)
+Compiler for C supports arguments -Wno-unused-function: YES 
+Compiler for C supports arguments -Wno-unused-variable: YES (cached)
+Compiler for C supports arguments -Wno-strict-aliasing: YES (cached)
+Compiler for C supports arguments -Wno-missing-prototypes: YES (cached)
+Compiler for C supports arguments -Wno-unused-value: YES (cached)
+Compiler for C supports arguments -Wno-format-nonliteral: YES (cached)
+Compiler for C supports arguments -Wno-shift-negative-value: YES 
+Compiler for C supports arguments -Wno-unused-but-set-variable: YES (cached)
+Compiler for C supports arguments -Wno-missing-declarations: YES 
+Compiler for C supports arguments -Wno-maybe-uninitialized: YES 
+Compiler for C supports arguments -Wno-strict-prototypes: YES (cached)
+Compiler for C supports arguments -Wno-shift-negative-value: YES (cached)
+Compiler for C supports arguments -Wno-implicit-fallthrough: YES (cached)
+Compiler for C supports arguments -Wno-format-extra-args: YES (cached)
+Compiler for C supports arguments -Wno-visibility: NO 
+Compiler for C supports arguments -Wno-empty-body: YES (cached)
+Compiler for C supports arguments -Wno-invalid-source-encoding: NO 
+Compiler for C supports arguments -Wno-sometimes-uninitialized: NO 
+Compiler for C supports arguments -Wno-pointer-bool-conversion: NO 
+Compiler for C supports arguments -Wno-format-nonliteral: YES (cached)
+Compiler for C supports arguments -Wno-strict-aliasing: YES (cached)
+Compiler for C supports arguments -Wdisabled-optimization: YES (cached)
+Compiler for C supports arguments -Waggregate-return: YES (cached)
+Compiler for C supports arguments -Wbad-function-cast: YES (cached)
+Library atomic found: YES
+Header "linux/pkt_cls.h" has symbol "TCA_FLOWER_UNSPEC" : YES 
+Header "linux/pkt_cls.h" has symbol "TCA_FLOWER_KEY_VLAN_PRIO" : YES 
+Header "linux/pkt_cls.h" has symbol "TCA_BPF_UNSPEC" : YES 
+Header "linux/pkt_cls.h" has symbol "TCA_BPF_FD" : NO 
+Header "linux/tc_act/tc_bpf.h" has symbol "TCA_ACT_BPF_UNSPEC" : NO 
+Header "linux/tc_act/tc_bpf.h" has symbol "TCA_ACT_BPF_FD" : NO 
+Configuring tap_autoconf.h using configuration
+Compiler for C supports arguments -fno-prefetch-loop-arrays: YES 
+Compiler for C supports arguments -Wno-maybe-uninitialized: YES (cached)
+Compiler for C supports arguments -D_BSD_SOURCE: YES (cached)
+Compiler for C supports arguments -D_DEFAULT_SOURCE: YES (cached)
+Compiler for C supports arguments -D_XOPEN_SOURCE=600: YES (cached)
+Compiler for C supports arguments -mavx512f: YES (cached)
+Compiler for C supports arguments -mavx512vl: YES (cached)
+Compiler for C supports arguments -mavx512bw: YES (cached)
+Compiler for C supports arguments -Wno-unused-parameter: YES (cached)
+Compiler for C supports arguments -Wno-unused-value: YES (cached)
+Compiler for C supports arguments -Wno-strict-aliasing: YES (cached)
+Compiler for C supports arguments -Wno-format-extra-args: YES (cached)
+WARNING: The version of CMake /usr/bin/cmake is 2.8.12.2 but version >=3.4 is required
+Run-time dependency librt found: NO (tried pkgconfig and cmake)
+Library rt found: YES
+Run-time dependency libaarch64crypto found: NO (tried pkgconfig)
+Run-time dependency libcrypto found: NO (tried pkgconfig)
+Library IPSec_MB found: NO
+Compiler for C supports arguments -std=c11: YES (cached)
+Compiler for C supports arguments -Wno-strict-prototypes: YES (cached)
+Compiler for C supports arguments -D_BSD_SOURCE: YES (cached)
+Compiler for C supports arguments -D_DEFAULT_SOURCE: YES (cached)
+Compiler for C supports arguments -D_XOPEN_SOURCE=600: YES (cached)
+Run-time dependency libmusdk found: NO (tried pkgconfig)
+Run-time dependency libcrypto found: NO (tried pkgconfig)
+Run-time dependency libwd_crypto found: NO (tried pkgconfig)
+Run-time dependency libwd found: NO (tried pkgconfig)
+Run-time dependency libisal found: NO (tried pkgconfig)
+Compiler for C supports arguments -std=c11: YES (cached)
+Compiler for C supports arguments -Wno-strict-prototypes: YES (cached)
+Compiler for C supports arguments -D_BSD_SOURCE: YES (cached)
+Compiler for C supports arguments -D_DEFAULT_SOURCE: YES (cached)
+Compiler for C supports arguments -D_XOPEN_SOURCE=600: YES (cached)
+Dependency zlib found: YES 1.2.7 (cached)
+Compiler for C supports arguments -std=c11: YES (cached)
+Compiler for C supports arguments -Wno-strict-prototypes: YES (cached)
+Compiler for C supports arguments -D_BSD_SOURCE: YES (cached)
+Compiler for C supports arguments -D_DEFAULT_SOURCE: YES (cached)
+Compiler for C supports arguments -D_XOPEN_SOURCE=600: YES (cached)
+Library rxp_compiler found: NO
+Compiler for C supports arguments -std=c11: YES (cached)
+Compiler for C supports arguments -Wno-strict-prototypes: YES (cached)
+Compiler for C supports arguments -D_BSD_SOURCE: YES (cached)
+Compiler for C supports arguments -D_DEFAULT_SOURCE: YES (cached)
+Compiler for C supports arguments -D_XOPEN_SOURCE=600: YES (cached)
+Compiler for C supports arguments -flax-vector-conversions: YES (cached)
+Compiler for C supports arguments -Wno-strict-aliasing: YES (cached)
+Fetching value of define "__AVX512VL__" : 1 (cached)
+Compiler for C supports arguments -Wno-format-nonliteral: YES (cached)
+WARNING: The version of CMake /usr/bin/cmake is 2.8.12.2 but version >=3.4 is required
+Run-time dependency flexran_sdk_turbo found: NO (tried pkgconfig and cmake)
+WARNING: The version of CMake /usr/bin/cmake is 2.8.12.2 but version >=3.4 is required
+Run-time dependency flexran_sdk_ldpc_decoder_5gnr found: NO (tried pkgconfig and cmake)
+Has header "cuda.h" : NO 
+Compiler for C supports arguments -Wno-format-truncation: YES (cached)
+Dependency zlib found: YES 1.2.7 (cached)
+Message: hugepage availability: true
+Program test_telemetry.sh found: YES (/home/xb/project/dpdk-stable-22.11.2/app/test/test_telemetry.sh)
+Program doxygen found: YES (/usr/bin/doxygen)
+Configuring doxy-api.conf using configuration
+Program sphinx-build found: YES (/usr/local/python3/py38/bin/sphinx-build)
+Configuring rte_build_config.h using configuration
+Message: 
+=================
+Applications Enabled
+=================
+
+apps:
+        pdump, proc-info, test-acl, test-bbdev, test-cmdline, test-compress-perf, test-crypto-perf, test-eventdev, 
+        test-fib, test-flow-perf, test-gpudev, test-pipeline, test-pmd, test-regex, test-sad, test-security-perf, 
+
+
+Message: 
+=================
+Libraries Enabled
+=================
+
+libs:
+        kvargs, telemetry, eal, ring, rcu, mempool, mbuf, net, 
+        meter, ethdev, pci, cmdline, metrics, hash, timer, acl, 
+        bbdev, bitratestats, bpf, cfgfile, compressdev, cryptodev, distributor, efd, 
+        eventdev, gpudev, gro, gso, ip_frag, jobstats, latencystats, lpm, 
+        member, pcapng, power, rawdev, regexdev, dmadev, rib, reorder, 
+        sched, security, stack, vhost, ipsec, fib, port, pdump, 
+        table, pipeline, graph, node, 
+
+Message: 
+===============
+Drivers Enabled
+===============
+
+common:
+        cpt, dpaax, iavf, idpf, octeontx, cnxk, mlx5, qat, 
+        sfc_efx, 
+bus:
+        auxiliary, dpaa, fslmc, ifpga, pci, vdev, vmbus, 
+mempool:
+        bucket, cnxk, dpaa, dpaa2, octeontx, ring, stack, 
+dma:
+        cnxk, dpaa, dpaa2, hisilicon, idxd, ioat, skeleton, 
+net:
+        af_packet, ark, atlantic, avp, axgbe, bnx2x, bnxt, bond, 
+        cnxk, cxgbe, dpaa, dpaa2, e1000, ena, enetc, enetfec, 
+        enic, failsafe, fm10k, gve, hinic, hns3, i40e, iavf, 
+        ice, idpf, igc, ionic, ipn3ke, ixgbe, liquidio, memif, 
+        mlx5, netvsc, nfp, ngbe, null, octeontx, octeon_ep, pfe, 
+        qede, ring, sfc, softnic, tap, thunderx, txgbe, vdev_netvsc, 
+        vhost, virtio, vmxnet3, 
+raw:
+        cnxk_bphy, cnxk_gpio, dpaa2_cmdif, ifpga, ntb, skeleton, 
+crypto:
+        bcmfs, caam_jr, cnxk, dpaa_sec, dpaa2_sec, mlx5, nitrox, null, 
+        octeontx, scheduler, virtio, 
+compress:
+        mlx5, octeontx, zlib, 
+regex:
+        mlx5, cn9k, 
+vdpa:
+        ifc, mlx5, sfc, 
+event:
+        cnxk, dlb2, dpaa, dpaa2, dsw, opdl, skeleton, sw, 
+        octeontx, 
+baseband:
+        acc, fpga_5gnr_fec, fpga_lte_fec, la12xx, null, turbo_sw, 
+gpu:
+
+
+Message: 
+=================
+Content Skipped
+=================
+
+apps:
+        dumpcap:        missing dependency, "libpcap"
+
+libs:
+        kni:    explicitly disabled via build config (deprecated lib)
+        flow_classify:  explicitly disabled via build config (deprecated lib)
+
+drivers:
+        common/mvep:    missing dependency, "libmusdk"
+        crypto/qat:     missing dependency, libcrypto
+        net/af_xdp:     missing header, "linux/if_xdp.h"
+        net/kni:        missing internal dependency, "kni" (deprecated lib)
+        net/mana:       missing dependency, "mana"
+        net/mlx4:       missing dependency, "mlx4"
+        net/mvneta:     missing dependency, "libmusdk"
+        net/mvpp2:      missing dependency, "libmusdk"
+        net/nfb:        missing dependency, "libnfb"
+        net/pcap:       missing dependency, "libpcap"
+        crypto/armv8:   missing dependency, "libAArch64crypto"
+        crypto/ccp:     missing dependency, "libcrypto"
+        crypto/ipsec_mb:        missing dependency, "libIPSec_MB"
+        crypto/mvsam:   missing dependency, "libmusdk"
+        crypto/openssl: missing dependency, "libcrypto"
+        crypto/uadk:    missing dependency, "libwd"
+        compress/isal:  missing dependency, "libisal"
+        gpu/cuda:       missing dependency, "cuda.h"
+
+
+Build targets in project: 976
+
+DPDK 22.11.2
+
+  User defined options
+    buildtype: debug
+
+Found ninja-1.11.1.git.kitware.jobserver-1 at /usr/local/python3/py38/bin/ninja
+[xb@s11 dpdk-stable-22.11.2]$ meson setup -Dbuildtype=debug build
