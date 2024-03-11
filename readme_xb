@@ -15,13 +15,33 @@ testpmd>
 ptp presision timing protocol
 
 
+查看大页: cat /proc/meminfo |grep -i huge
+
+配置大页:
+echo 16 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
 hugepage:
 大页信息初始化
 eal_hugepage_info_init(void) -> 当我们初始化大页信息时，默认情况下所有内容都会转到套接字 0。 稍后将按内存初始化过程排序. mem：共享主要和次要的大页信息，因为我们需要在主要和辅助进程中映射大页，所以我们需要知道应该在哪里寻找hugetlbfs挂载点。 因此，与辅助进程共享这些，并将它们映射到 init 上
+    eal_get_internal_configuration
     hugepage_info_init
-    create_shared_memory
+        const char dirent_start_text[] = "hugepages-";
+        dir = opendir(sys_dir_path) -> static const char sys_dir_path[] = "/sys/kernel/mm/hugepages";
+        for (dirent = readdir(dir); dirent != NULL; dirent = readdir(dir))
+            rte_str_to_size(&dirent->d_name[dirent_start_len]) -> 大页目录名转整数
+            get_hugepage_dir
+            get_num_hugepages
+            calc_num_pages
+    create_shared_memory(eal_hugepage_info_path(),
     memcpy
     munmap
+
+读取 /sys/kernel/mm/hugepages 中的“hugepages-XXX”目录，最多读取 3个。比如读取到 hugepages-2048kB ，将其中的 2048kB 转换为2048*1024，存入internal_config.hugepage_info[num_sizes].hugepage_sz， num_sizes<3
+打开 /proc/meminfo 文件，读取 Hugepagesize 项的值，做为大页默认大小。打开 /proc/mounts 文件，找到类似 hugetlbfs /dev/hugepages hugetlbfs rw,seclabel,relatime 0 0 或 nodev /mnt/huge hugetlbfs rw,relatime 0 0 的行，根据选项(rw,relatime)中出现的 pagesize= 项的值(如果有的话)，来返回对应的大页文件系统挂载路径，如 /dev/hugepages 或 /mnt/huge ，将其存入internal_config.hugepage_info[num_sizes].hugedir
+锁定hugedir(flock)
+打开 sys/kernel/mm/hugepages/hugepages-XXX 目录下面的 resv_hugepages 和 free_hugepages 文件，计算可用大页数量， 存入internal_config.hugepange_info->num_pages[0]，这个0是socket id，在支持NUMA的系统中先在socket 0上进行操作
+internal_config.num_hugepage_sizes数设置为num_sizes数，不大于3
+将上述过程发现的所有num_sizes个大页信息按从大到小排序，并检查至少有一个可用大页尺寸
+
 
 
 
@@ -31,6 +51,13 @@ rte_eal_memory_init
     eal_memalloc_init
     rte_eal_hugepage_init rte_eal_hugepage_attach
         map_all_hugepages
+            eal_get_hugefile_path(hf->filepath, sizeof(hf->filepath), -> // 拼接文件名 /dev/hugepages/rte_hugepage_%s
+            ...
+            fd = open(hf->filepath, O_CREAT | O_RDWR, 0600);
+            ...
+            virtaddr = mmap(NULL, hugepage_sz, PROT_READ | PROT_WRITE,
+                            MAP_SHARED | MAP_POPULATE, fd, 0);
+
 
 
 
@@ -63,20 +90,20 @@ rte_mem_cfg_addr = mmap(rte_mem_cfg_addr, sizeof(*rte_config.mem_config),PROT_RE
 
 static void rte_config_init(void)
 {
-	switch (rte_config.process_type)
-	{
-		case RTE_PROC_PRIMARY:
-			 //主进程创建共享内存配置
-			rte_eal_config_create();
-			break;
-		case RTE_PROC_SECONDARY:
-			//从进程打开共享内存配置后，映射到从进程自己的地址空间
-			rte_eal_config_attach();
-			//睡眠等待主进程设置完成共享内存配置
-			rte_eal_mcfg_wait_complete(rte_config.mem_config);
-			//从进程重新映射共享内存配置
-			rte_eal_config_reattach();
-	}
+    switch (rte_config.process_type)
+    {
+        case RTE_PROC_PRIMARY:
+             //主进程创建共享内存配置
+            rte_eal_config_create();
+            break;
+        case RTE_PROC_SECONDARY:
+            //从进程打开共享内存配置后，映射到从进程自己的地址空间
+            rte_eal_config_attach();
+            //睡眠等待主进程设置完成共享内存配置
+            rte_eal_mcfg_wait_complete(rte_config.mem_config);
+            //从进程重新映射共享内存配置
+            rte_eal_config_reattach();
+    }
 }
 
 //从进程打开/var/run/.rte_config文件
@@ -110,24 +137,62 @@ core:
 rte_flow_create
 
 
+从 find_physaddr() 中提取 rte_mem_virt2phy()。 该函数允许获取映射到调用该函数的当前进程的任何虚拟地址的物理地址。 请注意，此函数非常慢，不应在初始化后调用，以避免性能瓶颈
+#define RTE_BAD_PHYS_ADDR ((phys_addr_t)-1)
+#define RTE_BAD_IOVA ((rte_iova_t)-1)
 
 rte_mem_virt2phy(const void *virtaddr) -> 获取当前进程中任意映射虚拟地址的物理地址, 整理了DPDK中实现在用户态分配巨页和获取巨页物理地址的代码，可以作为参考，需要简化代码
+    page_size = getpagesize()
 
+
+rte_iova_t rte_mem_virt2iova(const void *virt);
 
 内存缓冲区
 struct rte_mbuf {
-	...
-	buf_iova -> 段缓冲区的物理地址。 如果构建配置为仅使用虚拟地址作为 IOVA（即 RTE_IOVA_AS_PA 为 0），则该字段未定义。 强制对齐到 8 字节，以确保 32 位和 64 位具有完全相同的 mbuf cacheline0 布局。 这使得矢量驱动程序的工作变得更加容易. buf_iova 是给设备用的地址，在 iova_mod=PA 的情况，buf_iova 就是物理地址
-	...
+    ...
+    buf_iova -> 段缓冲区的物理地址。 如果构建配置为仅使用虚拟地址作为 IOVA（即 RTE_IOVA_AS_PA 为 0），则该字段未定义。 强制对齐到 8 字节，以确保 32 位和 64 位具有完全相同的 mbuf cacheline0 布局。 这使得矢量驱动程序的工作变得更加容易. buf_iova 是给设备用的地址，在 iova_mod=PA 的情况，buf_iova 就是物理地址
+    ...
 }
 
 
 rte_mempool_obj_iter(mp, rte_pktmbuf_init, NULL) -> mbuf：使用配置中的默认内存池处理程序，默认情况下，用于 mbuf 分配的内存池操作是多生产者和多消费者环。 我们可以想象一个提供硬件辅助池机制的目标（也许是一些网络处理器？）。 在这种情况下，该架构的默认配置将包含不同的 RTE_MBUF_DEFAULT_MEMPOOL_OPS 值
-	rte_pktmbuf_priv_size
-	rte_pktmbuf_data_room_size
-	rte_mbuf_iova_set(m, rte_mempool_virt2iova(m) + mbuf_size) -> mbuf：添加帮助程序来获取/设置 IOVA 地址，添加 API rte_mbuf_iova_set 和 rte_mbuf_iova_get 分别用于设置和获取 mbuf 的物理地址。 更新了应用程序和库以使用相同的
+    rte_pktmbuf_priv_size
+    rte_pktmbuf_data_room_size
+    rte_mbuf_iova_set(m, rte_mempool_virt2iova(m) + mbuf_size) -> mbuf：添加帮助程序来获取/设置 IOVA 地址，添加 API rte_mbuf_iova_set 和 rte_mbuf_iova_get 分别用于设置和获取 mbuf 的物理地址。 更新了应用程序和库以使用相同的
 
 
 rte_mempool_populate_default
+
+
+struct hugepage_info {
+
+test:
+examples\helloworld\main.c
+main(int argc, char **argv)
+rte_eal_init
+    rte_eal_using_phys_addrs -> eal：根据PA可用性计算IOVA模式，目前，如果总线选择IOVA作为PA，则在缺乏对物理地址的访问时，内存初始化可能会失败。 对于普通用户来说，这可能很难理解出了什么问题，因为这是默认行为。 通过验证物理地址可用性，在 eal init 中尽早发现这种情况，或者在没有表达明确的偏好时选择 IOVA。 总线代码已更改，以便它在不关心 IOVA 模式时进行报告，并让 eal init 决定。 在Linux实现中，重新设计rte_eal_using_phys_addrs()，以便可以更早地调用它，但仍然避免与rte_mem_virt2phys()的循环依赖。 在 FreeBSD 实现中，rte_eal_using_phys_addrs() 始终返回 false，因此检测部分保持原样。 如果编译了librte_kni并加载了KNI kmod， - 如果总线请求VA，如果物理地址可用，则强制使用PA，就像之前所做的那样， - 否则，将iova保留为VA，KNI init稍后将失败
+    ...
+    eal_hugepage_info_init
+    ...
+rte_eal_remote_launch(lcore_hello, NULL, lcore_id)
+    lcore_id = rte_lcore_id()
+    printf("hello from core %u\n", lcore_id)
+lcore_hello
+rte_eal_mp_wait_lcore
+rte_eal_cleanup
+
+./dpdk-helloworld -l 0-3 -n 4
+
+
+
+user hugepage:
+app\test-pmd\testpmd.c
+setup_extmem
+create_extmem
+alloc_mem
+
+
+
+eal_get_virtual_area
 
 
