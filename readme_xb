@@ -184,20 +184,7 @@ rte_mempool_populate_default
 
 struct hugepage_info {
 
-test:
-examples\helloworld\main.c
-main(int argc, char **argv)
-rte_eal_init
-    rte_eal_using_phys_addrs -> eal：根据PA可用性计算IOVA模式，目前，如果总线选择IOVA作为PA，则在缺乏对物理地址的访问时，内存初始化可能会失败。 对于普通用户来说，这可能很难理解出了什么问题，因为这是默认行为。 通过验证物理地址可用性，在 eal init 中尽早发现这种情况，或者在没有表达明确的偏好时选择 IOVA。 总线代码已更改，以便它在不关心 IOVA 模式时进行报告，并让 eal init 决定。 在Linux实现中，重新设计rte_eal_using_phys_addrs()，以便可以更早地调用它，但仍然避免与rte_mem_virt2phys()的循环依赖。 在 FreeBSD 实现中，rte_eal_using_phys_addrs() 始终返回 false，因此检测部分保持原样。 如果编译了librte_kni并加载了KNI kmod， - 如果总线请求VA，如果物理地址可用，则强制使用PA，就像之前所做的那样， - 否则，将iova保留为VA，KNI init稍后将失败
-    ...
-    eal_hugepage_info_init
-    ...
-rte_eal_remote_launch(lcore_hello, NULL, lcore_id)
-    lcore_id = rte_lcore_id()
-    printf("hello from core %u\n", lcore_id)
-lcore_hello
-rte_eal_mp_wait_lcore
-rte_eal_cleanup
+
 
 ./dpdk-helloworld -l 0-3 -n 4
 
@@ -231,27 +218,73 @@ rte_eal_init(int argc, char **argv)
     eal_reset_internal_config
         internal_cfg->iova_mode = RTE_IOVA_DC -> default memory mode
     eal_log_level_parse -> set_log demo: ./app/test-pmd --log-level='pmd\.i40e.*,8' -> 现在正确设置 --log-level=7 不会打印来自 rte_eal_cpu_init() 例程的消息
-        eal_parse_common_option
-            eal_service_cores_parsed
-            rte_eal_parse_coremask
-            ...
     eal_save_args -> Connecting to /var/run/dpdk/rte/dpdk_telemetry.v2
         handle_eal_info_request
             rte_tel_data_start_array
             rte_tel_data_add_array_string
-    eal_create_runtime_dir
-    eal_adjust_config
     rte_eal_cpu_init -> eal：不要对CPU检测感到恐慌，可能没有办法优雅地恢复，但是应该通知应用程序发生了故障，而不是完全中止。 这允许用户继续使用“慢路径”类型的解决方案。 进行此更改后，EAL CPU NUMA 节点解析步骤不再发出 rte_panic。 这与 rte_eal_init 中的代码一致，该代码期望失败返回错误代码 -> 使用物理和逻辑处理器的数量填充配置 此函数是 EAL 专用的。 解析 /proc/cpuinfo 以获取计算机上的物理和逻辑处理器的数量, /sys/devices/system/cpu
-        eal_cpu_socket_id
-
+        eal_cpu_socket_id -> NUMA_NODE_PATH "/sys/devices/system/node"
+        eal_cpu_detected -> eal：不缓存 lcore 检测状态，我们仅在服务核心和 -c/-l 选项的控制路径中使用此状态。 使用--lcores 时，该值不会更新。 在需要的地方使用内部助手
     eal_parse_args
+        while ((opt = getopt_long
+        eal_parse_common_option
+            -l 和 -c 选项是选择 DPDK 使用的内核的两种方法。 它们的格式不同，但对所选核心的检查是相同的。 使用中间数组将特定的解析检查与常见的一致性检查分开。 解析函数现在专注于验证传递的字符串，而不执行其他操作。 我们可以报告所有无效的核心索引，而不仅仅是第一个错误。 在错误日志消息中，当核心列表不连续时，将 [0, cfg->lcore_count - 1] 报告为有效范围是错误的
+            eal_service_cores_parsed
+            rte_eal_parse_coremask
+            update_lcore_config
+            -n -> conf->force_nchannel = atoi(optarg)
+        eal_create_runtime_dir -> eal：即使不使用共享数据，也创建运行时目录，当不需要多进程并且DPDK使用“no-shconf”标志运行时，遥测库仍然需要一个运行时目录来放置用于遥测连接的unix套接字。 因此，我们可以更改代码以尝试创建目录，而不是在设置此标志时不创建目录，但如果失败则不会出错。 如果成功，则遥测将可用，但如果失败，DPDK 的其余部分将在没有遥测的情况下运行。 这确保了“内存中”标志将允许 DPDK 运行，即使整个文件系统是只读的
+            /var/run/dpdk
+            eal_get_hugefile_prefix
+            eal_set_runtime_dir
+                strlcpy(runtime_dir, run_dir, PATH_MAX) 
+        eal_adjust_config
+            eal_auto_detect_cores -> eal：限制核心自动检测，当未指定以下选项时，此补丁使用 pthread_getaffinity_np() 来缩小使用的核心范围： * coremask (-c) * corelist (-l) * 和 coremap (--lcores) 这样做的目的 patch的目的是在容器环境下部署DPDK应用程序时省略这些核心相关选项，以便用户在开发应用程序时不需要决定核心相关参数。 相反，当应用程序部署在容器中时，请使用 cpu-set 来限制可以在该容器实例内使用哪些核心。 而容器内的DPDK应用程序只是依靠这种自动检测机制来启动轮询线程。 注意：之前有部分用户使用隔离CPU，默认可以排除。 请添加任务集等命令来使用这些核心。 测试示例： $taskset 0xc0000 ./examples/helloworld/build/helloworld -m 1024
+                rte_thread_get_affinity_by_id
+            eal_proc_type_detect
+            main_lcore_parsed -> eal：重命名lcore master和slave，将master lcore替换为main lcore，并将slave lcore替换为worker lcore。 保留旧函数和宏，但将它们标记为在此版本中已弃用。 “--master-lcore”命令行选项也已弃用，任何使用都会打印警告并使用“--main-lcore”作为替换
+            compute_ctrl_threads_cpuset -> eal：限制控制线程启动 CPU 亲和力，在不属于 eal coremask 的任何内容上生成 ctrl 线程对系统的其余部分来说不太礼貌，尤其是当您非常小心地使用工具将进程固定在 cpu 资源上时 像任务集（linux）/cpuset（freebsd）。 我们不再引入另一个 eal 选项来控制在哪个 cpu 上创建这些 ctrl 线程，而是以启动 cpu 亲和力作为参考并从中删除 eal coremask。 如果没有剩下 cpu，那么我们默认为主核心。 cpuset 在 init 时计算一次，然后原始 cpu 关联性就会丢失。 引入了一个RTE_CPU_AND宏来抽象linux和freebsd各自宏之间的差异 -> taskset -c 7  ./master/app/testpmd --master-lcore 0 --lcores '(0,7)@(7,4,5)'  --no-huge --no-pci -m 512 -- -i --total-num-mbufs=2048
+                RTE_CPU_AND
+        eal_check_common_options -> sanity checks -> eal：分解选项健全性检查，无需对常见选项进行重复检查。 为选项 -c 和 -m 设置一些标志以简化检查
+            Main lcore
+            mbuf_pool ...
         eal_usage
-            eal_common_usage
-        eal_check_common_options
-    eal_plugins_init
-    ...
+            eal_common_usage -> help
+    eal_plugins_init -> eal: 在设备解析之前调用插件 init，默认 eal_init 代码调用 0. eal_plugins_init 1. eal_option_device_parse 2. rte_bus_scan IOVA 提交：cf408c224 错过了在 eal_option_device_parse、rte_bus_scan 之前调用 eal_plugins_init 以及下面引入的共享模式回归：使用 CONFIG_RTE_BUILD_SHARED_LIB=y: 'net_vhost 0 ,iface=/tmp/vhost-user2' -d ./install/lib/librte_pmd_vhost.so -- --portmask=1 --disable-hw-vlan -i --rxq=1 --txq=1 --nb -cores=1 --eth-peer=0,52:54:00:11:22:12 EAL：检测到 4 个 lcore 错误：无法解析设备“net_vhost0”EAL：无法解析设备“net_vhost0,iface” =/tmp/vhost-user2' main() 中发生恐慌：无法初始化 EAL
+        如果我们不是静态链接，请添加默认驱动程序加载路径（如果它作为目录存在）。 （在 EAL 上使用带有 NOLOAD 标志的 dlopen，如果 EAL 共享库尚未加载，即它是静态链接的，则将返回 NULL
+        is_shared_build
+            #define EAL_SO "librte_eal.so
+            handle = dlopen(soname, RTLD_LAZY | RTLD_NOLOAD)
+        eal_plugin_add -> eal：支持从目录加载驱动程序，添加对目录的支持作为 -d 的参数，以从给定目录加载所有驱动程序。 此外，可以在构建时配置中设置默认驱动程序目录，在这种情况下，在初始化 EAL 时将始终使用该目录。 与使用 -d 手动加载单个驱动程序相比，这大大简化了共享库配置的使用，并允许发行版建立一个嵌入式驱动程序目录，以便与第 3 方驱动程序等无缝集成
+            -> #define RTE_EAL_PMD_PATH "/usr/local/lib/x86_64-linux-gnu/dpdk/pmds-23.1"
+        TAILQ_FOREACH
+            eal_plugindir_init
+            eal_dlopen
     rte_config_init
-    rte_eal_using_phys_addrs
+        rte_eal_config_create
+            mem_cfg_fd = open(pathname, O_RDWR | O_CREAT, 0600)
+            retval = ftruncate(mem_cfg_fd, cfg_len)
+            retval = fcntl(mem_cfg_fd, F_SETLK, &wr_lock)
+            eal_get_virtual_area -> eal：修复多进程的内存配置分配，目前，内存配置将在不使用虚拟区域预留基础设施的情况下进行映射，这意味着它将被映射到任意位置。 这可能会导致在辅助进程中映射共享配置失败，因为 PCI 白名单参数在主进程已分配共享内存配置的空间中分配内存。 通过使用虚拟区域预留来为内存配置预留空间来修复此问题，从而避免该问题并保留共享配置（希望如此）远离任何正常的内存分配
+                rte_mem_page_size -> eal：引入内存管理包装器，引入独立于操作系统的包装器，用于跨DPDK使用的内存管理操作，特别是在EAL的公共代码中： * rte_mem_map() * rte_mem_unmap() * rte_mem_page_size() * rte_mem_lock() Windows使用不同的API进行内存映射 和保留，而 Unices 通过映射来保留内存。 引入 EAL 私有函数以支持公共代码中的内存预留： * eal_mem_reserve() * eal_mem_free() * eal_mem_set_dump() 包装器遵循仅限于 DPDK 任务的 POSIX 语义，但它们的签名故意与 POSIX 签名不同，以更加安全和更具表现力。 新符号是内部的。 由于包装很薄，因此不需要特殊维护
+                eal_get_baseaddr -> Linux 内核使用一个非常高的地址作为服务 mmap 调用的起始地址。 如果存在寻址限制并且 IOVA 模式为 VA，则该起始地址对于这些设备来说可能太高。 但是，可以在进程虚拟地址空间中使用较低的地址，因为 64 位有大量可用空间。 当前已知的限制是 39 或 40 位。 将起始地址设置为 4GB 意味着有 508GB 或 1020GB 用于映射可用的大页。 这对于大多数系统来说可能已经足够了，尽管具有寻址限制的设备应该调用 rte_mem_check_dma_mask 以确保所有内存都在支持的范围内
+                    return 0x7000000000ULL -> 28GB = int("0x700000000", 16)/(1<<30)
+                    or
+                    return 0x100000000ULL -> 4GB
+                eal_mem_reserve
+                    int sys_flags = MAP_PRIVATE | MAP_ANONYMOUS;
+                    sys_flags |= MAP_HUGETLB
+                     mem_map(requested_addr, size, PROT_NONE, sys_flags, -1, 0)
+                RTE_PTR_ALIGN
+            mapped_mem_cfg_addr = mmap(rte_mem_cfg_addr,
+			cfg_len_aligned, PROT_READ | PROT_WRITE,
+			MAP_SHARED | MAP_FIXED, mem_cfg_fd, 0);
+        eal_mcfg_update_from_internal
+            mcfg->single_file_segments = internal_conf->single_file_segments
+        rte_eal_config_attach
+        eal_mcfg_wait_complete
+        __rte_mp_enable
+    rte_eal_using_phys_addrs -> eal：根据PA可用性计算IOVA模式，目前，如果总线选择IOVA作为PA，则在缺乏对物理地址的访问时，内存初始化可能会失败。 对于普通用户来说，这可能很难理解出了什么问题，因为这是默认行为。 通过验证物理地址可用性，在 eal init 中尽早发现这种情况，或者在没有表达明确的偏好时选择 IOVA。 总线代码已更改，以便它在不关心 IOVA 模式时进行报告，并让 eal init 决定。 在Linux实现中，重新设计rte_eal_using_phys_addrs()，以便可以更早地调用它，但仍然避免与rte_mem_virt2phys()的循环依赖。 在 FreeBSD 实现中，rte_eal_using_phys_addrs() 始终返回 false，因此检测部分保持原样。 如果编译了librte_kni并加载了KNI kmod， - 如果总线请求VA，如果物理地址可用，则强制使用PA，就像之前所做的那样， - 否则，将iova保留为VA，KNI init稍后将失败
         rte_eal_has_hugepages -> no_hugetlbfs -> default use hugepage
         rte_mem_virt2phy
             return RTE_BAD_IOVA
@@ -259,6 +292,7 @@ rte_eal_init(int argc, char **argv)
     if (internal_conf->no_hugetlbfs == 0)
         hugepage_info_init
         create_shared_memory
+            map_sharee_memory
     ...
     RTE_LOG(DEBUG, EAL, "IOMMU is not available, selecting IOVA as PA mode.\n")
     rte_eal_get_configuration
@@ -278,7 +312,7 @@ rte_eal_init(int argc, char **argv)
     rte_eal_mp_remote_launch sync_func
     rte_eal_mp_wait_lcore
     rte_service_init
-	if (rte_bus_probe())
+    if (rte_bus_probe())
     rte_vfio_is_enabled
     rte_service_start_with_defaults
     eal_clean_runtime_dir
@@ -296,211 +330,540 @@ args/option:
 eal_usage
 eal_common_usage(void)
 {
-	printf("[options]\n\n"
-	       "EAL common options:\n"
-	       "  -c COREMASK         Hexadecimal bitmask of cores to run on\n"
-	       "  -l CORELIST         List of cores to run on\n"
-	       "                      The argument format is <c1>[-c2][,c3[-c4],...]\n"
-	       "                      where c1, c2, etc are core indexes between 0 and %d\n"
-	       "  --"OPT_LCORES" COREMAP    Map lcore set to physical cpu set\n"
-	       "                      The argument format is\n"
-	       "                            '<lcores[@cpus]>[<,lcores[@cpus]>...]'\n"
-	       "                      lcores and cpus list are grouped by '(' and ')'\n"
-	       "                      Within the group, '-' is used for range separator,\n"
-	       "                      ',' is used for single number separator.\n"
-	       "                      '( )' can be omitted for single element group,\n"
-	       "                      '@' can be omitted if cpus and lcores have the same value\n"
-	       "  -s SERVICE COREMASK Hexadecimal bitmask of cores to be used as service cores\n"
-	       "  --"OPT_MAIN_LCORE" ID     Core ID that is used as main\n"
-	       "  --"OPT_MBUF_POOL_OPS_NAME" Pool ops name for mbuf to use\n"
-	       "  -n CHANNELS         Number of memory channels\n" -> 内存通道是内存单元和 CPU 之间用于数据移动的走线。 内存通道的数量充当以更快的速率传输数据的路径。 对于 OVS-DPDK，参数 OVSDpdkMemoryChannels 保存活动使用的通道数, 内存通道 获取正确的内存通道数（-n 参数）很棘手，因为它取决于系统主板支持的通道数、内存芯片的数量和类型以及它们在系统中的物理安装方式，并且没有简单或简单的方法 甚至可以通过可靠的方式来判断正在运行的系统。 此信息应该在 BIOS 内存检查阶段的启动期间可用，在运行时 dmidecode 可以帮助至少做出有根据的猜测。 除非已经安装，否则您现在需要这样做： # yum install dmidecode 这通常会提供足够的信息来查找系统和/或主板手册，以了解主板支持什么以及在哪些配置中内存插槽数量 对于多通道支持至关重要： # dmidecode -t system # dmidecode -t baseboard 这会输出系统上已填充的内存插槽： # dmidecode -t memory | grep 'Size: [0-9]' 如果只有一个，则不能使用多通道内存。 如果有两个或其倍数，则可能是双通道，如果有三个或其倍数，则可能是三通道，如果有四个或其倍数，则可能是四通道。 或者双通道...此外，内存设备的定位器字段中可能还有进一步的提示，例如 ChannelA-DIMM0 和 ChannelB-DIMM0： grep 定位器：
-	       "  -m MB               Memory to allocate (see also --"OPT_SOCKET_MEM")\n"
-	       "  -r RANKS            Force number of memory ranks (don't detect)\n"
-	       "  -b, --block         Add a device to the blocked list.\n"
-	       "                      Prevent EAL from using this device. The argument\n"
-	       "                      format for PCI devices is <domain:bus:devid.func>.\n"
-	       "  -a, --allow         Add a device to the allow list.\n"
-	       "                      Only use the specified devices. The argument format\n"
-	       "                      for PCI devices is <[domain:]bus:devid.func>.\n"
-	       "                      This option can be present several times.\n"
-	       "                      [NOTE: " OPT_DEV_ALLOW " cannot be used with "OPT_DEV_BLOCK" option]\n"
-	       "  --"OPT_VDEV"              Add a virtual device.\n"
-	       "                      The argument format is <driver><id>[,key=val,...]\n"
-	       "                      (ex: --vdev=net_pcap0,iface=eth2).\n"
-	       "  --"OPT_IOVA_MODE"   Set IOVA mode. 'pa' for IOVA_PA\n"
-	       "                      'va' for IOVA_VA\n"
-	       "  -d LIB.so|DIR       Add a driver or driver directory\n"
-	       "                      (can be used multiple times)\n"
-	       "  --"OPT_VMWARE_TSC_MAP"    Use VMware TSC map instead of native RDTSC\n"
-	       "  --"OPT_PROC_TYPE"         Type of this process (primary|secondary|auto)\n"
+    printf("[options]\n\n"
+           "EAL common options:\n"
+           "  -c COREMASK         Hexadecimal bitmask of cores to run on\n"
+           "  -l CORELIST         List of cores to run on\n"
+           "                      The argument format is <c1>[-c2][,c3[-c4],...]\n"
+           "                      where c1, c2, etc are core indexes between 0 and %d\n"
+           "  --"OPT_LCORES" COREMAP    Map lcore set to physical cpu set\n"
+           "                      The argument format is\n"
+           "                            '<lcores[@cpus]>[<,lcores[@cpus]>...]'\n"
+           "                      lcores and cpus list are grouped by '(' and ')'\n"
+           "                      Within the group, '-' is used for range separator,\n"
+           "                      ',' is used for single number separator.\n"
+           "                      '( )' can be omitted for single element group,\n"
+           "                      '@' can be omitted if cpus and lcores have the same value\n"
+           "  -s SERVICE COREMASK Hexadecimal bitmask of cores to be used as service cores\n"
+           "  --"OPT_MAIN_LCORE" ID     Core ID that is used as main\n"
+           "  --"OPT_MBUF_POOL_OPS_NAME" Pool ops name for mbuf to use\n"
+           "  -n CHANNELS         Number of memory channels\n" -> 内存通道是内存单元和 CPU 之间用于数据移动的走线。 内存通道的数量充当以更快的速率传输数据的路径。 对于 OVS-DPDK，参数 OVSDpdkMemoryChannels 保存活动使用的通道数, 内存通道 获取正确的内存通道数（-n 参数）很棘手，因为它取决于系统主板支持的通道数、内存芯片的数量和类型以及它们在系统中的物理安装方式，并且没有简单或简单的方法 甚至可以通过可靠的方式来判断正在运行的系统。 此信息应该在 BIOS 内存检查阶段的启动期间可用，在运行时 dmidecode 可以帮助至少做出有根据的猜测。 除非已经安装，否则您现在需要这样做： # yum install dmidecode 这通常会提供足够的信息来查找系统和/或主板手册，以了解主板支持什么以及在哪些配置中内存插槽数量 对于多通道支持至关重要： # dmidecode -t system # dmidecode -t baseboard 这会输出系统上已填充的内存插槽： # dmidecode -t memory | grep 'Size: [0-9]' 如果只有一个，则不能使用多通道内存。 如果有两个或其倍数，则可能是双通道，如果有三个或其倍数，则可能是三通道，如果有四个或其倍数，则可能是四通道。 或者双通道...此外，内存设备的定位器字段中可能还有进一步的提示，例如 ChannelA-DIMM0 和 ChannelB-DIMM0： grep 定位器：
+           "  -m MB               Memory to allocate (see also --"OPT_SOCKET_MEM")\n"
+           "  -r RANKS            Force number of memory ranks (don't detect)\n"
+           "  -b, --block         Add a device to the blocked list.\n"
+           "                      Prevent EAL from using this device. The argument\n"
+           "                      format for PCI devices is <domain:bus:devid.func>.\n"
+           "  -a, --allow         Add a device to the allow list.\n"
+           "                      Only use the specified devices. The argument format\n"
+           "                      for PCI devices is <[domain:]bus:devid.func>.\n"
+           "                      This option can be present several times.\n"
+           "                      [NOTE: " OPT_DEV_ALLOW " cannot be used with "OPT_DEV_BLOCK" option]\n"
+           "  --"OPT_VDEV"              Add a virtual device.\n"
+           "                      The argument format is <driver><id>[,key=val,...]\n"
+           "                      (ex: --vdev=net_pcap0,iface=eth2).\n"
+           "  --"OPT_IOVA_MODE"   Set IOVA mode. 'pa' for IOVA_PA\n"
+           "                      'va' for IOVA_VA\n"
+           "  -d LIB.so|DIR       Add a driver or driver directory\n"
+           "                      (can be used multiple times)\n"
+           "  --"OPT_VMWARE_TSC_MAP"    Use VMware TSC map instead of native RDTSC\n"
+           "  --"OPT_PROC_TYPE"         Type of this process (primary|secondary|auto)\n"
 #ifndef RTE_EXEC_ENV_WINDOWS
-	       "  --"OPT_SYSLOG"            Set syslog facility\n"
+           "  --"OPT_SYSLOG"            Set syslog facility\n"
 #endif
-	       "  --"OPT_LOG_LEVEL"=<level> Set global log level\n"
-	       "  --"OPT_LOG_LEVEL"=<type-match>:<level>\n"
-	       "                      Set specific log level\n"
-	       "  --"OPT_LOG_LEVEL"=help    Show log types and levels\n"
+           "  --"OPT_LOG_LEVEL"=<level> Set global log level\n"
+           "  --"OPT_LOG_LEVEL"=<type-match>:<level>\n"
+           "                      Set specific log level\n"
+           "  --"OPT_LOG_LEVEL"=help    Show log types and levels\n"
 #ifndef RTE_EXEC_ENV_WINDOWS
-	       "  --"OPT_TRACE"=<regex-match>\n"
-	       "                      Enable trace based on regular expression trace name.\n"
-	       "                      By default, the trace is disabled.\n"
-	       "		      User must specify this option to enable trace.\n"
-	       "  --"OPT_TRACE_DIR"=<directory path>\n"
-	       "                      Specify trace directory for trace output.\n"
-	       "                      By default, trace output will created at\n"
-	       "                      $HOME directory and parameter must be\n"
-	       "                      specified once only.\n"
-	       "  --"OPT_TRACE_BUF_SIZE"=<int>\n"
-	       "                      Specify maximum size of allocated memory\n"
-	       "                      for trace output for each thread. Valid\n"
-	       "                      unit can be either 'B|K|M' for 'Bytes',\n"
-	       "                      'KBytes' and 'MBytes' respectively.\n"
-	       "                      Default is 1MB and parameter must be\n"
-	       "                      specified once only.\n"
-	       "  --"OPT_TRACE_MODE"=<o[verwrite] | d[iscard]>\n"
-	       "                      Specify the mode of update of trace\n"
-	       "                      output file. Either update on a file can\n"
-	       "                      be wrapped or discarded when file size\n"
-	       "                      reaches its maximum limit.\n"
-	       "                      Default mode is 'overwrite' and parameter\n"
-	       "                      must be specified once only.\n"
+           "  --"OPT_TRACE"=<regex-match>\n"
+           "                      Enable trace based on regular expression trace name.\n"
+           "                      By default, the trace is disabled.\n"
+           "		      User must specify this option to enable trace.\n"
+           "  --"OPT_TRACE_DIR"=<directory path>\n"
+           "                      Specify trace directory for trace output.\n"
+           "                      By default, trace output will created at\n"
+           "                      $HOME directory and parameter must be\n"
+           "                      specified once only.\n"
+           "  --"OPT_TRACE_BUF_SIZE"=<int>\n"
+           "                      Specify maximum size of allocated memory\n"
+           "                      for trace output for each thread. Valid\n"
+           "                      unit can be either 'B|K|M' for 'Bytes',\n"
+           "                      'KBytes' and 'MBytes' respectively.\n"
+           "                      Default is 1MB and parameter must be\n"
+           "                      specified once only.\n"
+           "  --"OPT_TRACE_MODE"=<o[verwrite] | d[iscard]>\n"
+           "                      Specify the mode of update of trace\n"
+           "                      output file. Either update on a file can\n"
+           "                      be wrapped or discarded when file size\n"
+           "                      reaches its maximum limit.\n"
+           "                      Default mode is 'overwrite' and parameter\n"
+           "                      must be specified once only.\n"
 #endif /* !RTE_EXEC_ENV_WINDOWS */
-	       "  -v                  Display version information on startup\n"
-	       "  -h, --help          This help\n"
-	       "  --"OPT_IN_MEMORY"   Operate entirely in memory. This will\n"
-	       "                      disable secondary process support\n"
-	       "  --"OPT_BASE_VIRTADDR"     Base virtual address\n"
-	       "  --"OPT_TELEMETRY"   Enable telemetry support (on by default)\n"
-	       "  --"OPT_NO_TELEMETRY"   Disable telemetry support\n"
-	       "  --"OPT_FORCE_MAX_SIMD_BITWIDTH" Force the max SIMD bitwidth\n"
-	       "\nEAL options for DEBUG use only:\n"
-	       "  --"OPT_HUGE_UNLINK"[=existing|always|never]\n"
-	       "                      When to unlink files in hugetlbfs\n"
-	       "                      ('existing' by default, no value means 'always')\n"
-	       "  --"OPT_NO_HUGE"           Use malloc instead of hugetlbfs\n"
-	       "  --"OPT_NO_PCI"            Disable PCI\n"
-	       "  --"OPT_NO_HPET"           Disable HPET\n"
-	       "  --"OPT_NO_SHCONF"         No shared config (mmap'd files)\n"
-	       "\n", RTE_MAX_LCORE);
+           "  -v                  Display version information on startup\n"
+           "  -h, --help          This help\n"
+           "  --"OPT_IN_MEMORY"   Operate entirely in memory. This will\n"
+           "                      disable secondary process support\n"
+           "  --"OPT_BASE_VIRTADDR"     Base virtual address\n"
+           "  --"OPT_TELEMETRY"   Enable telemetry support (on by default)\n"
+           "  --"OPT_NO_TELEMETRY"   Disable telemetry support\n"
+           "  --"OPT_FORCE_MAX_SIMD_BITWIDTH" Force the max SIMD bitwidth\n"
+           "\nEAL options for DEBUG use only:\n"
+           "  --"OPT_HUGE_UNLINK"[=existing|always|never]\n"
+           "                      When to unlink files in hugetlbfs\n"
+           "                      ('existing' by default, no value means 'always')\n"
+           "  --"OPT_NO_HUGE"           Use malloc instead of hugetlbfs\n"
+           "  --"OPT_NO_PCI"            Disable PCI\n"
+           "  --"OPT_NO_HPET"           Disable HPET\n"
+           "  --"OPT_NO_SHCONF"         No shared config (mmap'd files)\n"
+           "\n", RTE_MAX_LCORE);
 }
 
 
 
 CPU特性
 const struct feature_entry rte_cpu_feature_table[] = {
-	FEAT_DEF(SSE3, 0x00000001, 0, RTE_REG_ECX,  0)
-	FEAT_DEF(PCLMULQDQ, 0x00000001, 0, RTE_REG_ECX,  1)
-	FEAT_DEF(DTES64, 0x00000001, 0, RTE_REG_ECX,  2)
-	FEAT_DEF(MONITOR, 0x00000001, 0, RTE_REG_ECX,  3)
-	FEAT_DEF(DS_CPL, 0x00000001, 0, RTE_REG_ECX,  4)
-	FEAT_DEF(VMX, 0x00000001, 0, RTE_REG_ECX,  5)
-	FEAT_DEF(SMX, 0x00000001, 0, RTE_REG_ECX,  6)
-	FEAT_DEF(EIST, 0x00000001, 0, RTE_REG_ECX,  7)
-	FEAT_DEF(TM2, 0x00000001, 0, RTE_REG_ECX,  8)
-	FEAT_DEF(SSSE3, 0x00000001, 0, RTE_REG_ECX,  9)
-	FEAT_DEF(CNXT_ID, 0x00000001, 0, RTE_REG_ECX, 10)
-	FEAT_DEF(FMA, 0x00000001, 0, RTE_REG_ECX, 12)
-	FEAT_DEF(CMPXCHG16B, 0x00000001, 0, RTE_REG_ECX, 13)
-	FEAT_DEF(XTPR, 0x00000001, 0, RTE_REG_ECX, 14)
-	FEAT_DEF(PDCM, 0x00000001, 0, RTE_REG_ECX, 15)
-	FEAT_DEF(PCID, 0x00000001, 0, RTE_REG_ECX, 17)
-	FEAT_DEF(DCA, 0x00000001, 0, RTE_REG_ECX, 18)
-	FEAT_DEF(SSE4_1, 0x00000001, 0, RTE_REG_ECX, 19)
-	FEAT_DEF(SSE4_2, 0x00000001, 0, RTE_REG_ECX, 20)
-	FEAT_DEF(X2APIC, 0x00000001, 0, RTE_REG_ECX, 21)
-	FEAT_DEF(MOVBE, 0x00000001, 0, RTE_REG_ECX, 22)
-	FEAT_DEF(POPCNT, 0x00000001, 0, RTE_REG_ECX, 23)
-	FEAT_DEF(TSC_DEADLINE, 0x00000001, 0, RTE_REG_ECX, 24)
-	FEAT_DEF(AES, 0x00000001, 0, RTE_REG_ECX, 25)
-	FEAT_DEF(XSAVE, 0x00000001, 0, RTE_REG_ECX, 26)
-	FEAT_DEF(OSXSAVE, 0x00000001, 0, RTE_REG_ECX, 27)
-	FEAT_DEF(AVX, 0x00000001, 0, RTE_REG_ECX, 28)
-	FEAT_DEF(F16C, 0x00000001, 0, RTE_REG_ECX, 29)
-	FEAT_DEF(RDRAND, 0x00000001, 0, RTE_REG_ECX, 30)
-	FEAT_DEF(HYPERVISOR, 0x00000001, 0, RTE_REG_ECX, 31)
+    FEAT_DEF(SSE3, 0x00000001, 0, RTE_REG_ECX,  0)
+    FEAT_DEF(PCLMULQDQ, 0x00000001, 0, RTE_REG_ECX,  1)
+    FEAT_DEF(DTES64, 0x00000001, 0, RTE_REG_ECX,  2)
+    FEAT_DEF(MONITOR, 0x00000001, 0, RTE_REG_ECX,  3)
+    FEAT_DEF(DS_CPL, 0x00000001, 0, RTE_REG_ECX,  4)
+    FEAT_DEF(VMX, 0x00000001, 0, RTE_REG_ECX,  5)
+    FEAT_DEF(SMX, 0x00000001, 0, RTE_REG_ECX,  6)
+    FEAT_DEF(EIST, 0x00000001, 0, RTE_REG_ECX,  7)
+    FEAT_DEF(TM2, 0x00000001, 0, RTE_REG_ECX,  8)
+    FEAT_DEF(SSSE3, 0x00000001, 0, RTE_REG_ECX,  9)
+    FEAT_DEF(CNXT_ID, 0x00000001, 0, RTE_REG_ECX, 10)
+    FEAT_DEF(FMA, 0x00000001, 0, RTE_REG_ECX, 12)
+    FEAT_DEF(CMPXCHG16B, 0x00000001, 0, RTE_REG_ECX, 13)
+    FEAT_DEF(XTPR, 0x00000001, 0, RTE_REG_ECX, 14)
+    FEAT_DEF(PDCM, 0x00000001, 0, RTE_REG_ECX, 15)
+    FEAT_DEF(PCID, 0x00000001, 0, RTE_REG_ECX, 17)
+    FEAT_DEF(DCA, 0x00000001, 0, RTE_REG_ECX, 18)
+    FEAT_DEF(SSE4_1, 0x00000001, 0, RTE_REG_ECX, 19)
+    FEAT_DEF(SSE4_2, 0x00000001, 0, RTE_REG_ECX, 20)
+    FEAT_DEF(X2APIC, 0x00000001, 0, RTE_REG_ECX, 21)
+    FEAT_DEF(MOVBE, 0x00000001, 0, RTE_REG_ECX, 22)
+    FEAT_DEF(POPCNT, 0x00000001, 0, RTE_REG_ECX, 23)
+    FEAT_DEF(TSC_DEADLINE, 0x00000001, 0, RTE_REG_ECX, 24)
+    FEAT_DEF(AES, 0x00000001, 0, RTE_REG_ECX, 25)
+    FEAT_DEF(XSAVE, 0x00000001, 0, RTE_REG_ECX, 26)
+    FEAT_DEF(OSXSAVE, 0x00000001, 0, RTE_REG_ECX, 27)
+    FEAT_DEF(AVX, 0x00000001, 0, RTE_REG_ECX, 28)
+    FEAT_DEF(F16C, 0x00000001, 0, RTE_REG_ECX, 29)
+    FEAT_DEF(RDRAND, 0x00000001, 0, RTE_REG_ECX, 30)
+    FEAT_DEF(HYPERVISOR, 0x00000001, 0, RTE_REG_ECX, 31)
 
-	FEAT_DEF(FPU, 0x00000001, 0, RTE_REG_EDX,  0)
-	FEAT_DEF(VME, 0x00000001, 0, RTE_REG_EDX,  1)
-	FEAT_DEF(DE, 0x00000001, 0, RTE_REG_EDX,  2)
-	FEAT_DEF(PSE, 0x00000001, 0, RTE_REG_EDX,  3)
-	FEAT_DEF(TSC, 0x00000001, 0, RTE_REG_EDX,  4)
-	FEAT_DEF(MSR, 0x00000001, 0, RTE_REG_EDX,  5)
-	FEAT_DEF(PAE, 0x00000001, 0, RTE_REG_EDX,  6)
-	FEAT_DEF(MCE, 0x00000001, 0, RTE_REG_EDX,  7)
-	FEAT_DEF(CX8, 0x00000001, 0, RTE_REG_EDX,  8)
-	FEAT_DEF(APIC, 0x00000001, 0, RTE_REG_EDX,  9)
-	FEAT_DEF(SEP, 0x00000001, 0, RTE_REG_EDX, 11)
-	FEAT_DEF(MTRR, 0x00000001, 0, RTE_REG_EDX, 12)
-	FEAT_DEF(PGE, 0x00000001, 0, RTE_REG_EDX, 13)
-	FEAT_DEF(MCA, 0x00000001, 0, RTE_REG_EDX, 14)
-	FEAT_DEF(CMOV, 0x00000001, 0, RTE_REG_EDX, 15)
-	FEAT_DEF(PAT, 0x00000001, 0, RTE_REG_EDX, 16)
-	FEAT_DEF(PSE36, 0x00000001, 0, RTE_REG_EDX, 17)
-	FEAT_DEF(PSN, 0x00000001, 0, RTE_REG_EDX, 18)
-	FEAT_DEF(CLFSH, 0x00000001, 0, RTE_REG_EDX, 19)
-	FEAT_DEF(DS, 0x00000001, 0, RTE_REG_EDX, 21)
-	FEAT_DEF(ACPI, 0x00000001, 0, RTE_REG_EDX, 22)
-	FEAT_DEF(MMX, 0x00000001, 0, RTE_REG_EDX, 23)
-	FEAT_DEF(FXSR, 0x00000001, 0, RTE_REG_EDX, 24)
-	FEAT_DEF(SSE, 0x00000001, 0, RTE_REG_EDX, 25)
-	FEAT_DEF(SSE2, 0x00000001, 0, RTE_REG_EDX, 26)
-	FEAT_DEF(SS, 0x00000001, 0, RTE_REG_EDX, 27)
-	FEAT_DEF(HTT, 0x00000001, 0, RTE_REG_EDX, 28)
-	FEAT_DEF(TM, 0x00000001, 0, RTE_REG_EDX, 29)
-	FEAT_DEF(PBE, 0x00000001, 0, RTE_REG_EDX, 31)
+    FEAT_DEF(FPU, 0x00000001, 0, RTE_REG_EDX,  0)
+    FEAT_DEF(VME, 0x00000001, 0, RTE_REG_EDX,  1)
+    FEAT_DEF(DE, 0x00000001, 0, RTE_REG_EDX,  2)
+    FEAT_DEF(PSE, 0x00000001, 0, RTE_REG_EDX,  3)
+    FEAT_DEF(TSC, 0x00000001, 0, RTE_REG_EDX,  4)
+    FEAT_DEF(MSR, 0x00000001, 0, RTE_REG_EDX,  5)
+    FEAT_DEF(PAE, 0x00000001, 0, RTE_REG_EDX,  6)
+    FEAT_DEF(MCE, 0x00000001, 0, RTE_REG_EDX,  7)
+    FEAT_DEF(CX8, 0x00000001, 0, RTE_REG_EDX,  8)
+    FEAT_DEF(APIC, 0x00000001, 0, RTE_REG_EDX,  9)
+    FEAT_DEF(SEP, 0x00000001, 0, RTE_REG_EDX, 11)
+    FEAT_DEF(MTRR, 0x00000001, 0, RTE_REG_EDX, 12)
+    FEAT_DEF(PGE, 0x00000001, 0, RTE_REG_EDX, 13)
+    FEAT_DEF(MCA, 0x00000001, 0, RTE_REG_EDX, 14)
+    FEAT_DEF(CMOV, 0x00000001, 0, RTE_REG_EDX, 15)
+    FEAT_DEF(PAT, 0x00000001, 0, RTE_REG_EDX, 16)
+    FEAT_DEF(PSE36, 0x00000001, 0, RTE_REG_EDX, 17)
+    FEAT_DEF(PSN, 0x00000001, 0, RTE_REG_EDX, 18)
+    FEAT_DEF(CLFSH, 0x00000001, 0, RTE_REG_EDX, 19)
+    FEAT_DEF(DS, 0x00000001, 0, RTE_REG_EDX, 21)
+    FEAT_DEF(ACPI, 0x00000001, 0, RTE_REG_EDX, 22)
+    FEAT_DEF(MMX, 0x00000001, 0, RTE_REG_EDX, 23)
+    FEAT_DEF(FXSR, 0x00000001, 0, RTE_REG_EDX, 24)
+    FEAT_DEF(SSE, 0x00000001, 0, RTE_REG_EDX, 25)
+    FEAT_DEF(SSE2, 0x00000001, 0, RTE_REG_EDX, 26)
+    FEAT_DEF(SS, 0x00000001, 0, RTE_REG_EDX, 27)
+    FEAT_DEF(HTT, 0x00000001, 0, RTE_REG_EDX, 28)
+    FEAT_DEF(TM, 0x00000001, 0, RTE_REG_EDX, 29)
+    FEAT_DEF(PBE, 0x00000001, 0, RTE_REG_EDX, 31)
 
-	FEAT_DEF(DIGTEMP, 0x00000006, 0, RTE_REG_EAX,  0)
-	FEAT_DEF(TRBOBST, 0x00000006, 0, RTE_REG_EAX,  1)
-	FEAT_DEF(ARAT, 0x00000006, 0, RTE_REG_EAX,  2)
-	FEAT_DEF(PLN, 0x00000006, 0, RTE_REG_EAX,  4)
-	FEAT_DEF(ECMD, 0x00000006, 0, RTE_REG_EAX,  5)
-	FEAT_DEF(PTM, 0x00000006, 0, RTE_REG_EAX,  6)
+    FEAT_DEF(DIGTEMP, 0x00000006, 0, RTE_REG_EAX,  0)
+    FEAT_DEF(TRBOBST, 0x00000006, 0, RTE_REG_EAX,  1)
+    FEAT_DEF(ARAT, 0x00000006, 0, RTE_REG_EAX,  2)
+    FEAT_DEF(PLN, 0x00000006, 0, RTE_REG_EAX,  4)
+    FEAT_DEF(ECMD, 0x00000006, 0, RTE_REG_EAX,  5)
+    FEAT_DEF(PTM, 0x00000006, 0, RTE_REG_EAX,  6)
 
-	FEAT_DEF(MPERF_APERF_MSR, 0x00000006, 0, RTE_REG_ECX,  0)
-	FEAT_DEF(ACNT2, 0x00000006, 0, RTE_REG_ECX,  1)
-	FEAT_DEF(ENERGY_EFF, 0x00000006, 0, RTE_REG_ECX,  3)
+    FEAT_DEF(MPERF_APERF_MSR, 0x00000006, 0, RTE_REG_ECX,  0)
+    FEAT_DEF(ACNT2, 0x00000006, 0, RTE_REG_ECX,  1)
+    FEAT_DEF(ENERGY_EFF, 0x00000006, 0, RTE_REG_ECX,  3)
 
-	FEAT_DEF(FSGSBASE, 0x00000007, 0, RTE_REG_EBX,  0)
-	FEAT_DEF(BMI1, 0x00000007, 0, RTE_REG_EBX,  3)
-	FEAT_DEF(HLE, 0x00000007, 0, RTE_REG_EBX,  4)
-	FEAT_DEF(AVX2, 0x00000007, 0, RTE_REG_EBX,  5)
-	FEAT_DEF(SMEP, 0x00000007, 0, RTE_REG_EBX,  7)
-	FEAT_DEF(BMI2, 0x00000007, 0, RTE_REG_EBX,  8)
-	FEAT_DEF(ERMS, 0x00000007, 0, RTE_REG_EBX,  9)
-	FEAT_DEF(INVPCID, 0x00000007, 0, RTE_REG_EBX, 10)
-	FEAT_DEF(RTM, 0x00000007, 0, RTE_REG_EBX, 11)
-	FEAT_DEF(AVX512F, 0x00000007, 0, RTE_REG_EBX, 16)
-	FEAT_DEF(AVX512DQ, 0x00000007, 0, RTE_REG_EBX, 17)
-	FEAT_DEF(RDSEED, 0x00000007, 0, RTE_REG_EBX, 18)
-	FEAT_DEF(AVX512IFMA, 0x00000007, 0, RTE_REG_EBX, 21)
-	FEAT_DEF(AVX512CD, 0x00000007, 0, RTE_REG_EBX, 28)
-	FEAT_DEF(AVX512BW, 0x00000007, 0, RTE_REG_EBX, 30)
-	FEAT_DEF(AVX512VL, 0x00000007, 0, RTE_REG_EBX, 31)
+    FEAT_DEF(FSGSBASE, 0x00000007, 0, RTE_REG_EBX,  0)
+    FEAT_DEF(BMI1, 0x00000007, 0, RTE_REG_EBX,  3)
+    FEAT_DEF(HLE, 0x00000007, 0, RTE_REG_EBX,  4)
+    FEAT_DEF(AVX2, 0x00000007, 0, RTE_REG_EBX,  5)
+    FEAT_DEF(SMEP, 0x00000007, 0, RTE_REG_EBX,  7)
+    FEAT_DEF(BMI2, 0x00000007, 0, RTE_REG_EBX,  8)
+    FEAT_DEF(ERMS, 0x00000007, 0, RTE_REG_EBX,  9)
+    FEAT_DEF(INVPCID, 0x00000007, 0, RTE_REG_EBX, 10)
+    FEAT_DEF(RTM, 0x00000007, 0, RTE_REG_EBX, 11)
+    FEAT_DEF(AVX512F, 0x00000007, 0, RTE_REG_EBX, 16)
+    FEAT_DEF(AVX512DQ, 0x00000007, 0, RTE_REG_EBX, 17)
+    FEAT_DEF(RDSEED, 0x00000007, 0, RTE_REG_EBX, 18)
+    FEAT_DEF(AVX512IFMA, 0x00000007, 0, RTE_REG_EBX, 21)
+    FEAT_DEF(AVX512CD, 0x00000007, 0, RTE_REG_EBX, 28)
+    FEAT_DEF(AVX512BW, 0x00000007, 0, RTE_REG_EBX, 30)
+    FEAT_DEF(AVX512VL, 0x00000007, 0, RTE_REG_EBX, 31)
 
-	FEAT_DEF(AVX512VBMI, 0x00000007, 0, RTE_REG_ECX,  1)
-	FEAT_DEF(WAITPKG, 0x00000007, 0, RTE_REG_ECX,  5)
-	FEAT_DEF(AVX512VBMI2, 0x00000007, 0, RTE_REG_ECX,  6)
-	FEAT_DEF(GFNI, 0x00000007, 0, RTE_REG_ECX,  8)
-	FEAT_DEF(VAES, 0x00000007, 0, RTE_REG_ECX,  9)
-	FEAT_DEF(VPCLMULQDQ, 0x00000007, 0, RTE_REG_ECX, 10)
-	FEAT_DEF(AVX512VNNI, 0x00000007, 0, RTE_REG_ECX, 11)
-	FEAT_DEF(AVX512BITALG, 0x00000007, 0, RTE_REG_ECX, 12)
-	FEAT_DEF(AVX512VPOPCNTDQ, 0x00000007, 0, RTE_REG_ECX, 14)
-	FEAT_DEF(CLDEMOTE, 0x00000007, 0, RTE_REG_ECX, 25)
-	FEAT_DEF(MOVDIRI, 0x00000007, 0, RTE_REG_ECX, 27)
-	FEAT_DEF(MOVDIR64B, 0x00000007, 0, RTE_REG_ECX, 28)
+    FEAT_DEF(AVX512VBMI, 0x00000007, 0, RTE_REG_ECX,  1)
+    FEAT_DEF(WAITPKG, 0x00000007, 0, RTE_REG_ECX,  5)
+    FEAT_DEF(AVX512VBMI2, 0x00000007, 0, RTE_REG_ECX,  6)
+    FEAT_DEF(GFNI, 0x00000007, 0, RTE_REG_ECX,  8)
+    FEAT_DEF(VAES, 0x00000007, 0, RTE_REG_ECX,  9)
+    FEAT_DEF(VPCLMULQDQ, 0x00000007, 0, RTE_REG_ECX, 10)
+    FEAT_DEF(AVX512VNNI, 0x00000007, 0, RTE_REG_ECX, 11)
+    FEAT_DEF(AVX512BITALG, 0x00000007, 0, RTE_REG_ECX, 12)
+    FEAT_DEF(AVX512VPOPCNTDQ, 0x00000007, 0, RTE_REG_ECX, 14)
+    FEAT_DEF(CLDEMOTE, 0x00000007, 0, RTE_REG_ECX, 25)
+    FEAT_DEF(MOVDIRI, 0x00000007, 0, RTE_REG_ECX, 27)
+    FEAT_DEF(MOVDIR64B, 0x00000007, 0, RTE_REG_ECX, 28)
 
-	FEAT_DEF(AVX512VP2INTERSECT, 0x00000007, 0, RTE_REG_EDX,  8)
+    FEAT_DEF(AVX512VP2INTERSECT, 0x00000007, 0, RTE_REG_EDX,  8)
 
-	FEAT_DEF(LAHF_SAHF, 0x80000001, 0, RTE_REG_ECX,  0)
-	FEAT_DEF(LZCNT, 0x80000001, 0, RTE_REG_ECX,  4)
+    FEAT_DEF(LAHF_SAHF, 0x80000001, 0, RTE_REG_ECX,  0)
+    FEAT_DEF(LZCNT, 0x80000001, 0, RTE_REG_ECX,  4)
 
-	FEAT_DEF(SYSCALL, 0x80000001, 0, RTE_REG_EDX, 11)
-	FEAT_DEF(XD, 0x80000001, 0, RTE_REG_EDX, 20)
-	FEAT_DEF(1GB_PG, 0x80000001, 0, RTE_REG_EDX, 26)
-	FEAT_DEF(RDTSCP, 0x80000001, 0, RTE_REG_EDX, 27)
-	FEAT_DEF(EM64T, 0x80000001, 0, RTE_REG_EDX, 29)
+    FEAT_DEF(SYSCALL, 0x80000001, 0, RTE_REG_EDX, 11)
+    FEAT_DEF(XD, 0x80000001, 0, RTE_REG_EDX, 20)
+    FEAT_DEF(1GB_PG, 0x80000001, 0, RTE_REG_EDX, 26)
+    FEAT_DEF(RDTSCP, 0x80000001, 0, RTE_REG_EDX, 27)
+    FEAT_DEF(EM64T, 0x80000001, 0, RTE_REG_EDX, 29)
 
-	FEAT_DEF(INVTSC, 0x80000007, 0, RTE_REG_EDX,  8)
+    FEAT_DEF(INVTSC, 0x80000007, 0, RTE_REG_EDX,  8)
 };
+
+
+
+长短选项:
+enum {
+	/* long options mapped to a short option */
+#define OPT_HELP              "help"
+	OPT_HELP_NUM            = 'h',
+#define OPT_DEV_ALLOW	      "allow"
+	OPT_DEV_ALLOW_NUM       = 'a',
+#define OPT_DEV_BLOCK         "block"
+	OPT_DEV_BLOCK_NUM      = 'b',
+
+	/* first long only option value must be >= 256, so that we won't
+	 * conflict with short options */
+	OPT_LONG_MIN_NUM = 256,
+#define OPT_BASE_VIRTADDR     "base-virtaddr"
+	OPT_BASE_VIRTADDR_NUM,
+#define OPT_CREATE_UIO_DEV    "create-uio-dev"
+	OPT_CREATE_UIO_DEV_NUM,
+#define OPT_FILE_PREFIX       "file-prefix"
+	OPT_FILE_PREFIX_NUM,
+#define OPT_HUGE_DIR          "huge-dir"
+	OPT_HUGE_DIR_NUM,
+#define OPT_HUGE_UNLINK       "huge-unlink"
+	OPT_HUGE_UNLINK_NUM,
+#define OPT_LCORES            "lcores"
+	OPT_LCORES_NUM,
+#define OPT_LOG_LEVEL         "log-level"
+	OPT_LOG_LEVEL_NUM,
+#define OPT_TRACE             "trace"
+	OPT_TRACE_NUM,
+#define OPT_TRACE_DIR         "trace-dir"
+	OPT_TRACE_DIR_NUM,
+#define OPT_TRACE_BUF_SIZE    "trace-bufsz"
+	OPT_TRACE_BUF_SIZE_NUM,
+#define OPT_TRACE_MODE        "trace-mode"
+	OPT_TRACE_MODE_NUM,
+#define OPT_MAIN_LCORE        "main-lcore"
+	OPT_MAIN_LCORE_NUM,
+#define OPT_MBUF_POOL_OPS_NAME "mbuf-pool-ops-name"
+	OPT_MBUF_POOL_OPS_NAME_NUM,
+#define OPT_PROC_TYPE         "proc-type"
+	OPT_PROC_TYPE_NUM,
+#define OPT_NO_HPET           "no-hpet"
+	OPT_NO_HPET_NUM,
+#define OPT_NO_HUGE           "no-huge"
+	OPT_NO_HUGE_NUM,
+#define OPT_NO_PCI            "no-pci"
+	OPT_NO_PCI_NUM,
+#define OPT_NO_SHCONF         "no-shconf"
+	OPT_NO_SHCONF_NUM,
+#define OPT_IN_MEMORY         "in-memory"
+	OPT_IN_MEMORY_NUM,
+#define OPT_SOCKET_MEM        "socket-mem"
+	OPT_SOCKET_MEM_NUM,
+#define OPT_SOCKET_LIMIT        "socket-limit"
+	OPT_SOCKET_LIMIT_NUM,
+#define OPT_SYSLOG            "syslog"
+	OPT_SYSLOG_NUM,
+#define OPT_VDEV              "vdev"
+	OPT_VDEV_NUM,
+#define OPT_VFIO_INTR         "vfio-intr"
+	OPT_VFIO_INTR_NUM,
+#define OPT_VFIO_VF_TOKEN     "vfio-vf-token"
+	OPT_VFIO_VF_TOKEN_NUM,
+#define OPT_VMWARE_TSC_MAP    "vmware-tsc-map"
+	OPT_VMWARE_TSC_MAP_NUM,
+#define OPT_LEGACY_MEM    "legacy-mem"
+	OPT_LEGACY_MEM_NUM,
+#define OPT_SINGLE_FILE_SEGMENTS    "single-file-segments"
+	OPT_SINGLE_FILE_SEGMENTS_NUM,
+#define OPT_IOVA_MODE          "iova-mode"
+	OPT_IOVA_MODE_NUM,
+#define OPT_MATCH_ALLOCATIONS  "match-allocations"
+	OPT_MATCH_ALLOCATIONS_NUM,
+#define OPT_TELEMETRY         "telemetry"
+	OPT_TELEMETRY_NUM,
+#define OPT_NO_TELEMETRY      "no-telemetry"
+	OPT_NO_TELEMETRY_NUM,
+#define OPT_FORCE_MAX_SIMD_BITWIDTH  "force-max-simd-bitwidth"
+	OPT_FORCE_MAX_SIMD_BITWIDTH_NUM,
+#define OPT_HUGE_WORKER_STACK  "huge-worker-stack"
+	OPT_HUGE_WORKER_STACK_NUM,
+
+	OPT_LONG_MAX_NUM
+};
+
+
+
+设置日志级别:
+export RTE_LOG_LEVEL=8
+
+
+eal_dynmem_memseg_lists_init
+计算出我们将拥有的内存量是一个漫长且非常复杂的过程。 我们操作的基本元素是内存类型，定义为 NUMA 节点 ID 和页面大小的组合（例如，具有 2 个页面大小的 2 个套接字总共产生 4 个内存类型）。 决定每种内存类型的内存量是每种类型的最大段、每种类型的最大内存和检测到的 NUMA 节点数量之间的平衡行为。 目标是确保每种内存类型至少获得一个 memseg 列表。 内存总量受 RTE_MAX_MEM_MB 值限制。 每种类型的内存总量受 RTE_MAX_MEM_MB_PER_TYPE 或 RTE_MAX_MEM_MB 除以检测到的 NUMA 节点数的限制。 此外，每种类型的最大段数也受到 RTE_MAX_MEMSEG_PER_TYPE 的限制。 这是因为对于较小的页面大小，可能需要数十万个段才能达到上述指定的每种类型的内存限制。 此外，每种类型可能有多个与其关联的 memseg 列表，每个列表受 RTE_MAX_MEM_MB_PER_LIST（对于较大的页面大小）或 RTE_MAX_MEMSEG_PER_LIST 段（对于较小的页面大小）的限制。 每种类型的 memseg 列表的数量是根据上述限制决定的，并且还考虑检测到的 NUMA 节点的数量，以确保在用内存填充所有 NUMA 节点之前我们不会用完 memseg 列表。 我们分三个阶段进行。 首先，我们收集类型的数量。 然后，我们找出内存限制并填充可能的 memseg 列表。 然后，我们继续分配 memseg 列表
+
+
+
+
+
+helloworld -> examples/helloworld/main.c
+main(int argc, char **argv)
+rte_eal_init
+    rte_eal_get_configuration
+    eal_get_internal_configuration
+    rte_cpu_is_supported
+    eal_reset_internal_config
+    eal_log_level_parse
+    eal_save_args
+    rte_eal_cpu_init
+    eal_parse_args
+    eal_plugins_init
+    ...
+    rte_config_init
+        ...
+        pathname -> /run/user/1020/dpdk/rte/config
+        ...
+        eal_mem_reserve
+            addr:0x100000000 size: 28672
+            ...
+            mmap(requested_addr, size, prot, flags, fd, offset);
+    rte_eal_using_phys_addrs
+        rte_eal_has_hugepages -> no_hugetlbfs -> default use hugepage
+        rte_mem_virt2phy
+            return RTE_BAD_IOVA
+    rte_bus_get_iommu_class
+    if (internal_conf->no_hugetlbfs == 0)
+        hugepage_info_init
+        create_shared_memory
+rte_eal_remote_launch(lcore_hello, NULL, lcore_id)
+lcore_hello
+
+
+map_all_hugepages
+
+
+
+
+map_shared_memory
+    open(filename, flags, 0600)
+    ftruncate(fd, mem_size)
+    retval = mmap(NULL, mem_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+
+eal_log_init
+    log_stream = fopencookie(NULL, "w+", console_log_func)
+    openlog(id, LOG_NDELAY | LOG_PID, facility)
+    eal_log_set_default
+
+
+rte_eal_vfio_setup
+    rte_vfio_enable("vfio")
+    rte_eal_check_module
+    /sys/module/vfio
+    rte_vfio_get_container_fd
+    open(VFIO_CONTAINER_PATH, O_RDWR) -> open /dev/vfio/vfio
+    static const struct vfio_iommu_type iommu_types[]
+
+
+
+
+rte_eal_memzone_init
+    rte_fbarray_init(&mcfg->memzones, "memzone",
+    fully_validate
+    rte_mem_page_size
+    eal_get_virtual_area
+    eal_get_fbarray_path
+    eal_file_open
+    resize_and_map
+    map_addr = rte_mem_map(addr, len, RTE_PROT_READ | RTE_PROT_WRITE, RTE_MAP_SHARED | RTE_MAP_FORCE_ADDRESS, fd, 0);
+    TAILQ_INSERT_TAIL(&mem_area_tailq, ma, next)
+
+
+rte_eal_memory_init
+    rte_eal_memseg_init
+        memseg_primary_init -> eal_dynmem_memseg_lists_init
+            eal_memseg_list_init
+                eal_memseg_list_init_named
+
+            eal_memseg_list_alloc
+    eal_memalloc_init
+        (rte_memseg_list_walk(fd_list_create_walk, NULL)
+            alloc_list
+
+    rte_eal_hugepage_init
+        eal_legacy_hugepage_init or
+        eal_dynmem_hugepage_init
+            eal_dynmem_calc_num_pages_per_socket
+    or rte_eal_hugepage_attach
+    rte_eal_memdevice_init
+
+
+rte_eal_malloc_heap_init
+    malloc_add_seg
+
+
+RTE_LCORE_FOREACH_WORKER(i)
+    pipe(lcore_config[i].pipe_main2worker
+    eal_worker_thread_create
+        if (pthread_create(&lcore_config[lcore_id].thread_id, attrp, eal_thread_loop, (void *)(uintptr_t)lcore_id) == 0)
+            eal_thread_wait_command
+                n = read(m2w, &c, 1);
+            eal_thread_ack_command
+                n = write(w2m, &c, 1) <- eal_thread_wake_worker
+    pthread_setaffinity_np
+    rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MAIN)
+        rte_eal_remote_launch(f, arg, lcore_id)
+            __atomic_store_n(&lcore_config[worker_id].f, f, __ATOMIC_RELEASE)
+            eal_thread_wake_worker
+    rte_eal_mp_wait_lcore
+
+
+rte_service_init
+    rte_services = rte_calloc("rte_services",
+
+
+rte_bus_probe
+    TAILQ_FOREACH(bus, &rte_bus_list, next) <- rte_bus_register <- RTE_REGISTER_BUS
+        bus->probe()
+    vbus->probe()
+        auxiliary_probe(void)
+        rte_dpaa_bus_probe
+        rte_fslmc_probe
+        ifpga_probe
+        pci_probe(void)
+
+vfio_mp_sync_setup
+    rte_mp_action_register
+        name: eal_vfio_mp_sync
+        entry = malloc(sizeof(struct action_entry));
+        find_action_entry_by_name
+        TAILQ_INSERT_TAIL(&action_entry_list, entry, next)
+
+
+rte_service_start_with_defaults
+
+eal_clean_runtime_dir
+
+
+RTE_REGISTER_BUS(pci, rte_pci_bus.bus);
+struct rte_pci_bus rte_pci_bus = {
+	.bus = {
+		.scan = rte_pci_scan,
+		.probe = pci_probe,
+		.cleanup = pci_cleanup,
+		.find_device = pci_find_device,
+		.plug = pci_plug,
+		.unplug = pci_unplug,
+		.parse = pci_parse,
+		.devargs_parse = rte_pci_devargs_parse,
+		.dma_map = pci_dma_map,
+		.dma_unmap = pci_dma_unmap,
+		.get_iommu_class = rte_pci_get_iommu_class,
+		.dev_iterate = rte_pci_dev_iterate,
+		.hot_unplug_handler = pci_hot_unplug_handler,
+		.sigbus_handler = pci_sigbus_handler,
+	},
+	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
+	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),
+};
+
+
+
+EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
+
+
+pci_probe(void)
+    FOREACH_DEVICE_ON_PCIBUS <- RTE_PMD_REGISTER_PCI -> register pci device
+        pci_probe_all_drivers
+            FOREACH_DRIVER_ON_PCIBUS
+                rte_pci_probe_one_driver
+                    rte_pci_match
+                    ...
+                    hisi_dma_pmd_drv
+                    idxd_pmd_drv_pci
+                    ioat_pmd_drv
+                    rte_ark_pmd
+                    rte_cxgbe_pmd
+                    rte_igb_pmd
+                    rte_ice_pmd
+                    mlx5_common_pci_driver <- rte_pci_register(&mlx5_common_pci_driver);
+                    rte_virtio_net_pci_pmd
+                    ...
+                    ret = dr->probe(dr, dev) -> mlx5_common_pci_probe
+                        mlx5_common_dev_probe
+                            mlx5_kvargs_prepare
+                            parse_class_options
+                            mlx5_common_dev_create
+                            is_valid_class_combination
+                            drivers_probe
+                                ...
+                                mlx5_os_pci_probe
+                                    mlx5_os_pci_probe_pf
+                                        mlx5_dev_spawn
+                                            rte_eth_switch_domain_alloc
+
+
+
+drivers/common/mlx5/mlx5_common_pci.c
+
+drivers/net/mlx5/mlx5.c
+RTE_INIT(rte_mlx5_pmd_init)
+    mlx5_common_init
+
+
+mlx5_os_get_ibv_dev
+mlx5_os_get_ibv_device
+
+
+rte_telemetry_init
+    telemetry_v2_init
+        rte_telemetry_register_cmd("/"
+            callbacks[i].fn = fn
+        rte_telemetry_register_cmd("/info"
+        v2_socket.sock = create_socket(v2_socket.path)
+        pthread_create(&t_new, NULL, socket_listener, &v2_socket)
+            int s_accepted = accept(s->sock, NULL, NULL)
+            pthread_create(&th, NULL, s->fn,
+    or telemetry_legacy_init
+
+
+
+rte_log_register_type_and_pick_level
+
+
+eal_mcfg_complete
+    internal_conf->init_complete = 1;
+
 
