@@ -867,3 +867,89 @@ eal_mcfg_complete
     internal_conf->init_complete = 1;
 
 
+verification/st/dpdk/st_dpdk.c -> main
+rte_eal_init
+sprintf(dut2dpi_addr, "/home/common/st_socket/%s/dut2dpi", argv[1]);
+sprintf(dpi2dut_addr, "/home/common/st_socket/%s/dpi2dut", argv[1]);
+rte_eth_dev_count_avail
+rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
+RTE_ETH_FOREACH_DEV
+    port_init
+        rte_eth_dev_info_get
+        rte_eth_dev_configure
+        rte_eth_dev_adjust_nb_rx_tx_desc
+        rte_eth_rx_queue_setup
+        rte_eth_dev_socket_id
+        rte_eth_tx_queue_setup
+        rte_eth_dev_socket_id
+        rte_eth_dev_start
+        rte_eth_macaddr_get
+        rte_eth_promiscuous_enable
+RTE_LCORE_FOREACH_WORKER
+    rte_eal_remote_launch(lcore_dpdk2eda_rx, NULL, lcore_id)
+        init_server
+        RTE_ETH_FOREACH_DEV(port)
+            rte_eth_rx_burst(port, 0,
+            deal_dpdk2eda_msg -> deal_eda_dpdk_msg
+                epoll_wait
+                rqe_alloc_db
+                deal_listenfd_epollin
+                deal_clientfd_epollin
+                edamsg2pkt
+                    rte_pktmbuf_reset_headroom
+                    rte_memcpy(rte_pktmbuf_mtod_offset(pkt, char *, 0),
+                pkt2edamsg
+                epoll_ctl
+lcore_eda2dpdk_tx
+    deal_eda2dpdk_msg -> deal_eda_dpdk_msg
+        ...
+    rte_eth_tx_burst
+rte_eal_mp_wait_lcore
+
+
+
+app\test-pmd\testpmd.c -> main, https://blog.csdn.net/hhd1988/article/details/123237172
+rte_eal_init
+register_eth_event_callback
+init_port
+set_def_fwd_config
+launch_args_parse
+rte_dev_hotplug_handle_enable
+rte_dev_event_monitor_start
+rte_dev_event_callback_register dev_event_callback
+start_port
+rte_eth_promiscuous_enable
+start_packet_forwarding
+rte_eal_cleanup
+
+
+
+struct fwd_engine io_fwd_engine = {
+	.fwd_mode_name  = "io",
+	.port_fwd_begin = NULL,
+	.port_fwd_end   = NULL,
+	.stream_init    = stream_init_forward,
+	.packet_fwd     = pkt_burst_io_forward,
+};
+
+struct fwd_engine mac_fwd_engine = {
+	.fwd_mode_name  = "mac",
+	.port_fwd_begin = NULL,
+	.port_fwd_end   = NULL,
+	.stream_init    = stream_init_mac_forward,
+	.packet_fwd     = pkt_burst_mac_forward,
+};
+
+
+
+struct fwd_engine mac_swap_engine = {
+	.fwd_mode_name  = "macswap",
+	.port_fwd_begin = NULL,
+	.port_fwd_end   = NULL,
+	.stream_init    = stream_init_mac_swap,
+	.packet_fwd     = pkt_burst_mac_swap,
+};
+
+
+
+
