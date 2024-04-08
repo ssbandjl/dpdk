@@ -968,3 +968,293 @@ cmdline_parse_inst_t cmd_showport = {
 };
 
 
+
+
+
+helloworld -> examples/helloworld/main.c
+main(int argc, char **argv)
+rte_eal_init
+    rte_eal_get_configuration
+    eal_get_internal_configuration
+    rte_cpu_is_supported
+    eal_reset_internal_config
+    eal_log_level_parse
+    eal_save_args
+    rte_eal_cpu_init
+    eal_parse_args
+    eal_plugins_init
+    ...
+    rte_config_init
+        ...
+        pathname -> /run/user/1020/dpdk/rte/config
+        ...
+        eal_mem_reserve
+            addr:0x100000000 size: 28672
+            ...
+            mmap(requested_addr, size, prot, flags, fd, offset);
+    rte_eal_using_phys_addrs
+        rte_eal_has_hugepages -> no_hugetlbfs -> default use hugepage
+        rte_mem_virt2phy
+            return RTE_BAD_IOVA
+    rte_bus_get_iommu_class
+    if (internal_conf->no_hugetlbfs == 0)
+        hugepage_info_init
+        create_shared_memory
+rte_eal_remote_launch(lcore_hello, NULL, lcore_id)
+lcore_hello
+
+
+map_all_hugepages
+
+
+
+
+map_shared_memory
+    open(filename, flags, 0600)
+    ftruncate(fd, mem_size)
+    retval = mmap(NULL, mem_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+
+eal_log_init
+    log_stream = fopencookie(NULL, "w+", console_log_func)
+    openlog(id, LOG_NDELAY | LOG_PID, facility)
+    eal_log_set_default
+
+
+rte_eal_vfio_setup
+    rte_vfio_enable("vfio")
+    rte_eal_check_module
+    /sys/module/vfio
+    rte_vfio_get_container_fd
+    open(VFIO_CONTAINER_PATH, O_RDWR) -> open /dev/vfio/vfio
+    static const struct vfio_iommu_type iommu_types[]
+
+
+
+
+rte_eal_memzone_init
+    rte_fbarray_init(&mcfg->memzones, "memzone",
+    fully_validate
+    rte_mem_page_size
+    eal_get_virtual_area
+    eal_get_fbarray_path
+    eal_file_open
+    resize_and_map
+    map_addr = rte_mem_map(addr, len, RTE_PROT_READ | RTE_PROT_WRITE, RTE_MAP_SHARED | RTE_MAP_FORCE_ADDRESS, fd, 0);
+    TAILQ_INSERT_TAIL(&mem_area_tailq, ma, next)
+
+
+rte_eal_memory_init
+    rte_eal_memseg_init
+        memseg_primary_init -> eal_dynmem_memseg_lists_init
+            eal_memseg_list_init
+                eal_memseg_list_init_named
+
+            eal_memseg_list_alloc
+    eal_memalloc_init
+        (rte_memseg_list_walk(fd_list_create_walk, NULL)
+            alloc_list
+
+    rte_eal_hugepage_init
+        eal_legacy_hugepage_init or
+        eal_dynmem_hugepage_init
+            eal_dynmem_calc_num_pages_per_socket
+    or rte_eal_hugepage_attach
+    rte_eal_memdevice_init
+
+
+rte_eal_malloc_heap_init
+    malloc_add_seg
+
+
+RTE_LCORE_FOREACH_WORKER(i)
+    pipe(lcore_config[i].pipe_main2worker
+    eal_worker_thread_create
+        if (pthread_create(&lcore_config[lcore_id].thread_id, attrp, eal_thread_loop, (void *)(uintptr_t)lcore_id) == 0)
+            eal_thread_wait_command
+                n = read(m2w, &c, 1);
+            eal_thread_ack_command
+                n = write(w2m, &c, 1) <- eal_thread_wake_worker
+    pthread_setaffinity_np
+    rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MAIN)
+        rte_eal_remote_launch(f, arg, lcore_id)
+            __atomic_store_n(&lcore_config[worker_id].f, f, __ATOMIC_RELEASE)
+            eal_thread_wake_worker
+    rte_eal_mp_wait_lcore
+
+
+rte_service_init
+    rte_services = rte_calloc("rte_services",
+
+
+rte_bus_probe
+    TAILQ_FOREACH(bus, &rte_bus_list, next) <- rte_bus_register <- RTE_REGISTER_BUS
+        bus->probe()
+    vbus->probe()
+        auxiliary_probe(void)
+        rte_dpaa_bus_probe
+        rte_fslmc_probe
+        ifpga_probe
+        pci_probe(void)
+
+vfio_mp_sync_setup
+    rte_mp_action_register
+        name: eal_vfio_mp_sync
+        entry = malloc(sizeof(struct action_entry));
+        find_action_entry_by_name
+        TAILQ_INSERT_TAIL(&action_entry_list, entry, next)
+
+
+rte_service_start_with_defaults
+
+eal_clean_runtime_dir
+
+
+RTE_REGISTER_BUS(pci, rte_pci_bus.bus);
+struct rte_pci_bus rte_pci_bus = {
+	.bus = {
+		.scan = rte_pci_scan,
+		.probe = pci_probe,
+		.cleanup = pci_cleanup,
+		.find_device = pci_find_device,
+		.plug = pci_plug,
+		.unplug = pci_unplug,
+		.parse = pci_parse,
+		.devargs_parse = rte_pci_devargs_parse,
+		.dma_map = pci_dma_map,
+		.dma_unmap = pci_dma_unmap,
+		.get_iommu_class = rte_pci_get_iommu_class,
+		.dev_iterate = rte_pci_dev_iterate,
+		.hot_unplug_handler = pci_hot_unplug_handler,
+		.sigbus_handler = pci_sigbus_handler,
+	},
+	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
+	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),
+};
+
+
+
+EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
+
+
+pci_probe(void)
+    FOREACH_DEVICE_ON_PCIBUS <- RTE_PMD_REGISTER_PCI -> register pci device
+        pci_probe_all_drivers
+            FOREACH_DRIVER_ON_PCIBUS
+                rte_pci_probe_one_driver
+                    rte_pci_match
+                    ...
+                    hisi_dma_pmd_drv
+                    idxd_pmd_drv_pci
+                    ioat_pmd_drv
+                    rte_ark_pmd
+                    rte_cxgbe_pmd
+                    rte_igb_pmd
+                    rte_ice_pmd
+                    mlx5_common_pci_driver <- rte_pci_register(&mlx5_common_pci_driver);
+                    rte_virtio_net_pci_pmd
+                    ...
+                    ret = dr->probe(dr, dev) -> mlx5_common_pci_probe
+                        mlx5_common_dev_probe
+                            mlx5_kvargs_prepare
+                            parse_class_options
+                            mlx5_common_dev_create
+                            is_valid_class_combination
+                            drivers_probe
+                                ...
+                                mlx5_os_pci_probe
+                                    mlx5_os_pci_probe_pf
+                                        mlx5_dev_spawn
+                                            rte_eth_switch_domain_alloc
+
+
+
+drivers/common/mlx5/mlx5_common_pci.c
+
+drivers/net/mlx5/mlx5.c
+RTE_INIT(rte_mlx5_pmd_init)
+    mlx5_common_init
+
+
+mlx5_os_get_ibv_dev
+mlx5_os_get_ibv_device
+
+
+rte_telemetry_init
+    telemetry_v2_init
+        rte_telemetry_register_cmd("/"
+            callbacks[i].fn = fn
+        rte_telemetry_register_cmd("/info"
+        v2_socket.sock = create_socket(v2_socket.path)
+        pthread_create(&t_new, NULL, socket_listener, &v2_socket)
+            int s_accepted = accept(s->sock, NULL, NULL)
+            pthread_create(&th, NULL, s->fn,
+    or telemetry_legacy_init
+
+
+
+rte_log_register_type_and_pick_level
+
+
+eal_mcfg_complete
+    internal_conf->init_complete = 1;
+
+
+
+
+
+verification/st/dpdk/st_dpdk.c -> main -> rx
+rte_eal_init
+sprintf(dut2dpi_addr, "/home/common/st_socket/%s/dut2dpi", argv[1]);
+sprintf(dpi2dut_addr, "/home/common/st_socket/%s/dpi2dut", argv[1]);
+rte_eth_dev_count_avail
+rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
+RTE_ETH_FOREACH_DEV
+    port_init
+        rte_eth_dev_info_get
+        rte_eth_dev_configure
+        rte_eth_dev_adjust_nb_rx_tx_desc
+        rte_eth_rx_queue_setup
+        rte_eth_dev_socket_id
+        rte_eth_tx_queue_setup
+        rte_eth_dev_socket_id
+        rte_eth_dev_start
+        rte_eth_macaddr_get
+        rte_eth_promiscuous_enable
+RTE_LCORE_FOREACH_WORKER
+    rte_eal_remote_launch(lcore_dpdk2eda_rx, NULL, lcore_id)
+        init_server
+        RTE_ETH_FOREACH_DEV(port)
+            rte_eth_rx_burst(port, 0,
+            deal_dpdk2eda_msg -> deal_eda_dpdk_msg
+                epoll_wait
+                rqe_alloc_db
+                deal_listenfd_epollin
+                deal_clientfd_epollin
+                edamsg2pkt
+                    rte_pktmbuf_reset_headroom
+                    rte_memcpy(rte_pktmbuf_mtod_offset(pkt, char *, 0),
+                pkt2edamsg
+                epoll_ctl
+lcore_eda2dpdk_tx(mbuf_pool) -> tx
+    RTE_ETH_FOREACH_DEV(port)
+        init_server(&listenfd, &epollfd, dut2dpi_addr) -> 
+    for (;;)
+        RTE_ETH_FOREACH_DEV(port)
+            deal_eda2dpdk_msg(listenfd, epollfd, bufs, mbuf_pool) -> deal_eda_dpdk_msg
+                mbufs[trans_cnt] = rte_pktmbuf_alloc(mbuf_pool)
+                edamsg2pkt
+            rte_eth_tx_burst
+rte_eal_mp_wait_lcore
+
+
+
+
+struct rte_mbuf {
+    ...
+    void *buf_addr;
+    ...
+}
+
+
+
