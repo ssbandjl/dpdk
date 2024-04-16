@@ -907,11 +907,8 @@ lcore_eda2dpdk_tx
 rte_eal_mp_wait_lcore
 
 
-<<<<<<< HEAD
 
-=======
 testpmd_funcs.rst, https://dpdk.readthedocs.io/en/v1.8.0/testpmd_app_ug/testpmd_funcs.html
->>>>>>> e9cb655f280fc588b9ee29f7f75ce8d2d4f8d096
 app\test-pmd\testpmd.c -> main, https://blog.csdn.net/hhd1988/article/details/123237172
 rte_eal_init
 register_eth_event_callback
@@ -955,8 +952,6 @@ struct fwd_engine mac_swap_engine = {
 };
 
 
-<<<<<<< HEAD
-=======
 testpmd> show port info 0
 cmdline_parse_inst_t cmd_showport = {
                .f =cmd_showport_parsed,
@@ -1262,6 +1257,5 @@ struct rte_mbuf {
     ...
 }
 
->>>>>>> e9cb655f280fc588b9ee29f7f75ce8d2d4f8d096
 
 
