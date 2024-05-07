@@ -907,7 +907,6 @@ lcore_eda2dpdk_tx
 rte_eal_mp_wait_lcore
 
 
-
 testpmd_funcs.rst, https://dpdk.readthedocs.io/en/v1.8.0/testpmd_app_ug/testpmd_funcs.html
 app\test-pmd\testpmd.c -> main, https://blog.csdn.net/hhd1988/article/details/123237172
 rte_eal_init
@@ -1259,3 +1258,17 @@ struct rte_mbuf {
 
 
 
+doca,
+I used the following commands on the DPU to install dpdk:
+wget https://fast.dpdk.org/rel/dpdk-22.11.2.tar.xz 1
+tar xf dpdk-22.11.2.tar.xz
+cd dpdk-stable-22.11.2
+meson build
+meson configure -Ddisable_drivers=regex/cn9k build
+meson setup soc_build -Dplatform=bluefield
+ninja -C build
+ninja -C build install
+pkg-config --modversion libdpdk
+
+And then you can set the hugepages:
+echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
