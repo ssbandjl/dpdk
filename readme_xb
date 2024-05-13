@@ -27,7 +27,6 @@ Longest Prefix matching: lib\lpm\rte_lpm.h
 rte_distributor_process -> 处理一组数据包并将其分发给worker
 
 
-testpmd>
 
 
 ptp presision timing protocol
@@ -60,7 +59,7 @@ eal_hugepage_info_init(void) -> 当我们初始化大页信息时，默认情况
 internal_config.num_hugepage_sizes数设置为num_sizes数，不大于3
 将上述过程发现的所有num_sizes个大页信息按从大到小排序，并检查至少有一个可用大页尺寸
 
-
+get and req hugepage: dpdk-hugepages.py --setup 2G
 
 
 大页内存初始化
@@ -323,7 +322,6 @@ rte_eal_remote_launch(lcore_hello, NULL, lcore_id)
 lcore_hello
 
 
-map_all_hugepages
 
 
 args/option:
@@ -671,64 +669,6 @@ rte_eal_remote_launch(lcore_hello, NULL, lcore_id)
 lcore_hello
 
 
-map_all_hugepages
-
-
-
-
-map_shared_memory
-    open(filename, flags, 0600)
-    ftruncate(fd, mem_size)
-    retval = mmap(NULL, mem_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-
-
-eal_log_init
-    log_stream = fopencookie(NULL, "w+", console_log_func)
-    openlog(id, LOG_NDELAY | LOG_PID, facility)
-    eal_log_set_default
-
-
-rte_eal_vfio_setup
-    rte_vfio_enable("vfio")
-    rte_eal_check_module
-    /sys/module/vfio
-    rte_vfio_get_container_fd
-    open(VFIO_CONTAINER_PATH, O_RDWR) -> open /dev/vfio/vfio
-    static const struct vfio_iommu_type iommu_types[]
-
-
-
-
-rte_eal_memzone_init
-    rte_fbarray_init(&mcfg->memzones, "memzone",
-    fully_validate
-    rte_mem_page_size
-    eal_get_virtual_area
-    eal_get_fbarray_path
-    eal_file_open
-    resize_and_map
-    map_addr = rte_mem_map(addr, len, RTE_PROT_READ | RTE_PROT_WRITE, RTE_MAP_SHARED | RTE_MAP_FORCE_ADDRESS, fd, 0);
-    TAILQ_INSERT_TAIL(&mem_area_tailq, ma, next)
-
-
-rte_eal_memory_init
-    rte_eal_memseg_init
-        memseg_primary_init -> eal_dynmem_memseg_lists_init
-            eal_memseg_list_init
-                eal_memseg_list_init_named
-
-            eal_memseg_list_alloc
-    eal_memalloc_init
-        (rte_memseg_list_walk(fd_list_create_walk, NULL)
-            alloc_list
-
-    rte_eal_hugepage_init
-        eal_legacy_hugepage_init or
-        eal_dynmem_hugepage_init
-            eal_dynmem_calc_num_pages_per_socket
-    or rte_eal_hugepage_attach
-    rte_eal_memdevice_init
-
 
 rte_eal_malloc_heap_init
     malloc_add_seg
@@ -1023,11 +963,14 @@ eal_log_init
 
 rte_eal_vfio_setup
     rte_vfio_enable("vfio")
-    rte_eal_check_module
-    /sys/module/vfio
-    rte_vfio_get_container_fd
-    open(VFIO_CONTAINER_PATH, O_RDWR) -> open /dev/vfio/vfio
-    static const struct vfio_iommu_type iommu_types[]
+        for (i = 0; i < VFIO_MAX_CONTAINERS; i++) -> 64
+            for (j = 0; j < VFIO_MAX_GROUPS; j++) -> 64
+        vfio_available = rte_eal_check_module(modname) -> vfio：避免在模块未加载时启用，当内核支持 vfio 功能时未加载 vfio 模块时，例程仍尝试打开容器以获取文件描述。 此操作不安全，当然会收到错误消息： EAL: Detected 40 lcore(s) EAL: unsupported IOMMU type! EAL: VFIO 支持无法初始化 EAL: 设置内存...这可能会让用户感到困惑，这个补丁使用户更合理、更流畅
+        /sys/module/vfio
+        default_vfio_cfg->vfio_container_fd = rte_vfio_get_container_fd()
+            open(VFIO_CONTAINER_PATH, O_RDWR) -> open /dev/vfio/vfio
+        or vfio_get_default_container_fd
+        static const struct vfio_iommu_type iommu_types[]
 
 
 
@@ -1272,3 +1215,11 @@ pkg-config --modversion libdpdk
 
 And then you can set the hugepages:
 echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
+
+
+
+vfio
+usertools/dpdk-devbind.py
+
+
+
