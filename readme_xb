@@ -11,9 +11,8 @@ mlx5driver:
 driver source code: https://blog.csdn.net/leiyanjie8995/article/details/121341828
 struct rte_eth_dev { -> 与每个以太网设备关联的通用数据结构。 指向突发数据包接收和发送功能的指针位于该结构的开头，以及指向特定设备的所有数据元素存储在共享内存中的位置的指针。 这种分割允许每个进程使用函数指针和驱动程序数据，而设备的实际配置数据是共享的。
 
-与框架相关的比较重要的，收发报文的接口是rx_pkt_burst和tx_pkt_burst。还有与网卡相关的初始化、配置等接口都在eth_dev_ops里。还有网卡设备的私有数据，带有硬件相关的各项参数和数据，记录在rte_eth_dev_data结构里，包括网卡名称、收发队列个数及列表、mac地址等等
+与框架相关的比较重要的，收发报文的接口是 rx_pkt_burst 和 tx_pkt_burst, 还有与网卡相关的初始化、配置等接口都在eth_dev_ops里。还有网卡设备的私有数据，带有硬件相关的各项参数和数据，记录在rte_eth_dev_data结构里，包括网卡名称、收发队列个数及列表、mac地址等等
 值得注意的是，为了representor的概念，mellanox在rte_eth_dev_data结构里添加了一个名为representor_id的参数，用作representor设备的id
-
 mellanox的驱动在drivers/common/mlx5和drivers/net/mlx5目录下。common目录下是通用pcie相关，包括pcie驱动、与硬件交互的接口封装；net目录下是更上层的接口，包括eth设备、representor相关的一系列操作
 
 
@@ -93,7 +92,8 @@ rte_eth_rx_burst
 
 send pkt:
 rte_eth_tx_burst
-    tx_queues -> rte_eth_tx_burst
+    tx_queues -> rte_eth_tx_burst -> nb_pkts = p->tx_pkt_burst(qd, tx_pkts, nb_pkts)
+
 
 
 
@@ -188,12 +188,6 @@ struct hugepage_info {
 ./dpdk-helloworld -l 0-3 -n 4
 
 
-
-user hugepage:
-app\test-pmd\testpmd.c
-setup_extmem
-create_extmem
-alloc_mem
 
 
 
@@ -694,15 +688,6 @@ rte_service_init
     rte_services = rte_calloc("rte_services",
 
 
-rte_bus_probe
-    TAILQ_FOREACH(bus, &rte_bus_list, next) <- rte_bus_register <- RTE_REGISTER_BUS
-        bus->probe()
-    vbus->probe()
-        auxiliary_probe(void)
-        rte_dpaa_bus_probe
-        rte_fslmc_probe
-        ifpga_probe
-        pci_probe(void)
 
 vfio_mp_sync_setup
     rte_mp_action_register
@@ -717,27 +702,6 @@ rte_service_start_with_defaults
 eal_clean_runtime_dir
 
 
-RTE_REGISTER_BUS(pci, rte_pci_bus.bus);
-struct rte_pci_bus rte_pci_bus = {
-	.bus = {
-		.scan = rte_pci_scan,
-		.probe = pci_probe,
-		.cleanup = pci_cleanup,
-		.find_device = pci_find_device,
-		.plug = pci_plug,
-		.unplug = pci_unplug,
-		.parse = pci_parse,
-		.devargs_parse = rte_pci_devargs_parse,
-		.dma_map = pci_dma_map,
-		.dma_unmap = pci_dma_unmap,
-		.get_iommu_class = rte_pci_get_iommu_class,
-		.dev_iterate = rte_pci_dev_iterate,
-		.hot_unplug_handler = pci_hot_unplug_handler,
-		.sigbus_handler = pci_sigbus_handler,
-	},
-	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
-	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),
-};
 
 
 
@@ -770,7 +734,21 @@ pci_probe(void)
                             drivers_probe
                                 ...
                                 mlx5_os_pci_probe
-                                    mlx5_os_pci_probe_pf
+                                    mlx5_os_parse_eth_devargs
+                                        rte_eth_devargs_parse
+                                            eth_dev_devargs_tokenise
+                                            rte_eth_devargs_parse_representor_ports
+                                    if (eth_da.nb_ports > 0)
+                                        mlx5_os_pci_probe_pf
+                                            ibv_list = mlx5_glue->get_device_list(&ret)
+                                            NETLINK_ROUTE
+                                            NETLINK_RDMA
+                                            mlx5_device_bond_pci_match
+                                            np = mlx5_nl_portnum(nl_rdma, ibv_match[0]->name)
+                                            mlx5_dev_spawn
+                                            rte_eth_copy_pci_info
+                                            rte_intr_instance_alloc
+                                    else mlx5_os_pci_probe_pf
                                         mlx5_dev_spawn
                                             rte_eth_switch_domain_alloc
 
@@ -807,60 +785,25 @@ eal_mcfg_complete
     internal_conf->init_complete = 1;
 
 
-verification/st/dpdk/st_dpdk.c -> main
-rte_eal_init
-sprintf(dut2dpi_addr, "/home/common/st_socket/%s/dut2dpi", argv[1]);
-sprintf(dpi2dut_addr, "/home/common/st_socket/%s/dpi2dut", argv[1]);
-rte_eth_dev_count_avail
-rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
-RTE_ETH_FOREACH_DEV
-    port_init
-        rte_eth_dev_info_get
-        rte_eth_dev_configure
-        rte_eth_dev_adjust_nb_rx_tx_desc
-        rte_eth_rx_queue_setup
-        rte_eth_dev_socket_id
-        rte_eth_tx_queue_setup
-        rte_eth_dev_socket_id
-        rte_eth_dev_start
-        rte_eth_macaddr_get
-        rte_eth_promiscuous_enable
-RTE_LCORE_FOREACH_WORKER
-    rte_eal_remote_launch(lcore_dpdk2eda_rx, NULL, lcore_id)
-        init_server
-        RTE_ETH_FOREACH_DEV(port)
-            rte_eth_rx_burst(port, 0,
-            deal_dpdk2eda_msg -> deal_eda_dpdk_msg
-                epoll_wait
-                rqe_alloc_db
-                deal_listenfd_epollin
-                deal_clientfd_epollin
-                edamsg2pkt
-                    rte_pktmbuf_reset_headroom
-                    rte_memcpy(rte_pktmbuf_mtod_offset(pkt, char *, 0),
-                pkt2edamsg
-                epoll_ctl
-lcore_eda2dpdk_tx
-    deal_eda2dpdk_msg -> deal_eda_dpdk_msg
-        ...
-    rte_eth_tx_burst
-rte_eal_mp_wait_lcore
 
 
 testpmd_funcs.rst, https://dpdk.readthedocs.io/en/v1.8.0/testpmd_app_ug/testpmd_funcs.html
+user guider: https://doc.dpdk.org/guides/testpmd_app_ug/
+run app: https://doc.dpdk.org/guides/testpmd_app_ug/run_app.html
+./dpdk-testpmd -l 0-3 -n 4 -- -i --portmask=0x1 --nb-cores=2
 app\test-pmd\testpmd.c -> main, https://blog.csdn.net/hhd1988/article/details/123237172
-rte_eal_init
-register_eth_event_callback
-init_port
-set_def_fwd_config
-launch_args_parse
-rte_dev_hotplug_handle_enable
-rte_dev_event_monitor_start
-rte_dev_event_callback_register dev_event_callback
-start_port
-rte_eth_promiscuous_enable
-start_packet_forwarding
-rte_eal_cleanup
+    rte_eal_init
+    register_eth_event_callback
+    init_port
+    set_def_fwd_config
+    launch_args_parse
+    rte_dev_hotplug_handle_enable
+    rte_dev_event_monitor_start
+    rte_dev_event_callback_register dev_event_callback
+    start_port
+    rte_eth_promiscuous_enable
+    start_packet_forwarding
+    rte_eal_cleanup
 
 
 
@@ -1053,7 +996,13 @@ rte_service_start_with_defaults
 eal_clean_runtime_dir
 
 
-RTE_REGISTER_BUS(pci, rte_pci_bus.bus);
+
+
+
+EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
+
+
+
 struct rte_pci_bus rte_pci_bus = {
 	.bus = {
 		.scan = rte_pci_scan,
@@ -1076,47 +1025,193 @@ struct rte_pci_bus rte_pci_bus = {
 };
 
 
-
-EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
-
-
-pci_probe(void)
-    FOREACH_DEVICE_ON_PCIBUS <- RTE_PMD_REGISTER_PCI -> register pci device
-        pci_probe_all_drivers
-            FOREACH_DRIVER_ON_PCIBUS
-                rte_pci_probe_one_driver
-                    rte_pci_match
-                    ...
-                    hisi_dma_pmd_drv
-                    idxd_pmd_drv_pci
-                    ioat_pmd_drv
-                    rte_ark_pmd
-                    rte_cxgbe_pmd
-                    rte_igb_pmd
-                    rte_ice_pmd
-                    mlx5_common_pci_driver <- rte_pci_register(&mlx5_common_pci_driver);
-                    rte_virtio_net_pci_pmd
-                    ...
-                    ret = dr->probe(dr, dev) -> mlx5_common_pci_probe
-                        mlx5_common_dev_probe
-                            mlx5_kvargs_prepare
-                            parse_class_options
-                            mlx5_common_dev_create
-                            is_valid_class_combination
-                            drivers_probe
-                                ...
-                                mlx5_os_pci_probe
-                                    mlx5_os_pci_probe_pf
-                                        mlx5_dev_spawn
-                                            rte_eth_switch_domain_alloc
-
-
-
 drivers/common/mlx5/mlx5_common_pci.c
 
+
+dpdk init module, 
 drivers/net/mlx5/mlx5.c
 RTE_INIT(rte_mlx5_pmd_init)
     mlx5_common_init
+        mlx5_glue_constructor
+            mlx5_glue->fork_init() -> ibv_fork_init
+        mlx5_common_driver_init -> common/mlx5：添加总线无关层，为了支持辅助总线，引入通用设备驱动程序和回调，应该取代mlx5通用PCI总线驱动程序。 Mlx5 类驱动程序，即 eth、vDPA、regex 和 compress 通常使用单个 Verbs 设备上下文来探测设备。 如果设备是 PCI 总线设备，则 Verbs 设备来自 PCI 地址；如果设备是辅助总线设备，则来自 Auxiliary sysfs。 目前仅支持 PCI 总线。 通用设备驱动程序是 mlx5 类驱动程序和总线之间的中间层，为类驱动程序解析和抽象总线信息到 Verbs 设备。 PCI总线驱动程序和辅助总线驱动程序都可以利用公共驱动程序层将总线操作转换为mlx5类驱动程序。 mlx5 eth、vDPA、正则表达式和压缩 PMD 仍在使用旧版 mlx5 通用 PCI 总线驱动程序，一旦所有 PMD 驱动程序迁移到新的通用驱动程序，该驱动程序将被删除
+            mlx5_common_pci_init
+                pci_ids_table_update -> 所有 mlx5 PMD 构造函数都以相同的优先级运行。 所以任何一个PMD，包括这个，都可以先注册PCI表。 如果任何其他 PMD 已注册 PCI ID 表，则无需注册空的默认表
+                    pci_id_table_size_get
+                    pci_id_insert(updated_table, &i, driver_id_table)
+                    mlx5_pci_id_table = updated_table
+                rte_pci_register(&mlx5_common_pci_driver)
+                    TAILQ_INSERT_TAIL(&rte_pci_bus.driver_list, driver, next)
+            mlx5_common_auxiliary_init
+                rte_auxiliary_register(&mlx5_auxiliary_driver)
+    mlx5_set_ptype_table
+    mlx5_set_cksum_table
+    mlx5_set_swp_types_table
+    mlx5_class_driver_register(&mlx5_net_driver)
+
+
+static struct rte_auxiliary_driver mlx5_auxiliary_driver = {
+	.driver = {
+		   .name = MLX5_AUXILIARY_DRIVER_NAME,
+	},
+	.match = mlx5_common_auxiliary_match,
+	.probe = mlx5_common_auxiliary_probe,
+	.remove = mlx5_common_auxiliary_remove,
+	.dma_map = mlx5_common_auxiliary_dma_map,
+	.dma_unmap = mlx5_common_auxiliary_dma_unmap,
+};
+
+static struct mlx5_class_driver mlx5_net_driver = {
+	.drv_class = MLX5_CLASS_ETH,
+	.name = RTE_STR(MLX5_ETH_DRIVER_NAME),
+	.id_table = mlx5_pci_id_map,
+	.probe = mlx5_os_net_probe,
+	.remove = mlx5_net_remove,
+	.probe_again = 1,
+	.intr_lsc = 1,
+	.intr_rmv = 1,
+};
+
+
+
+__rte_cache_aligned
+const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
+	.version = MLX5_GLUE_VERSION,
+	.fork_init = mlx5_glue_fork_init,
+	.alloc_pd = mlx5_glue_alloc_pd,
+	.dealloc_pd = mlx5_glue_dealloc_pd,
+	.import_pd = mlx5_glue_import_pd,
+	.unimport_pd = mlx5_glue_unimport_pd,
+	.get_device_list = mlx5_glue_get_device_list,
+	.free_device_list = mlx5_glue_free_device_list,
+	.open_device = mlx5_glue_open_device,
+	.import_device = mlx5_glue_import_device,
+	.close_device = mlx5_glue_close_device,
+	.query_device = mlx5_glue_query_device,
+	.query_device_ex = mlx5_glue_query_device_ex,
+	.get_device_name = mlx5_glue_get_device_name,
+	.query_rt_values_ex = mlx5_glue_query_rt_values_ex,
+	.query_port = mlx5_glue_query_port,
+	.create_comp_channel = mlx5_glue_create_comp_channel,
+	.destroy_comp_channel = mlx5_glue_destroy_comp_channel,
+	.create_cq = mlx5_glue_create_cq,
+	.destroy_cq = mlx5_glue_destroy_cq,
+	.get_cq_event = mlx5_glue_get_cq_event,
+	.ack_cq_events = mlx5_glue_ack_cq_events,
+	.create_rwq_ind_table = mlx5_glue_create_rwq_ind_table,
+	.destroy_rwq_ind_table = mlx5_glue_destroy_rwq_ind_table,
+	.create_wq = mlx5_glue_create_wq,
+	.destroy_wq = mlx5_glue_destroy_wq,
+	.modify_wq = mlx5_glue_modify_wq,
+	.create_flow = mlx5_glue_create_flow,
+	.destroy_flow = mlx5_glue_destroy_flow,
+	.destroy_flow_action = mlx5_glue_destroy_flow_action,
+	.create_qp = mlx5_glue_create_qp,
+	.create_qp_ex = mlx5_glue_create_qp_ex,
+	.destroy_qp = mlx5_glue_destroy_qp,
+	.modify_qp = mlx5_glue_modify_qp,
+	.reg_mr = mlx5_glue_reg_mr,
+	.reg_mr_iova = mlx5_glue_reg_mr_iova,
+	.alloc_null_mr = mlx5_glue_alloc_null_mr,
+	.dereg_mr = mlx5_glue_dereg_mr,
+	.create_counter_set = mlx5_glue_create_counter_set,
+	.destroy_counter_set = mlx5_glue_destroy_counter_set,
+	.describe_counter_set = mlx5_glue_describe_counter_set,
+	.query_counter_set = mlx5_glue_query_counter_set,
+	.create_counters = mlx5_glue_create_counters,
+	.destroy_counters = mlx5_glue_destroy_counters,
+	.attach_counters = mlx5_glue_attach_counters,
+	.query_counters = mlx5_glue_query_counters,
+	.ack_async_event = mlx5_glue_ack_async_event,
+	.get_async_event = mlx5_glue_get_async_event,
+	.port_state_str = mlx5_glue_port_state_str,
+	.cq_ex_to_cq = mlx5_glue_cq_ex_to_cq,
+	.dr_create_flow_action_dest_flow_tbl =
+		mlx5_glue_dr_create_flow_action_dest_flow_tbl,
+	.dr_create_flow_action_dest_port =
+		mlx5_glue_dr_create_flow_action_dest_port,
+	.dr_create_flow_action_drop =
+		mlx5_glue_dr_create_flow_action_drop,
+	.dr_create_flow_action_push_vlan =
+		mlx5_glue_dr_create_flow_action_push_vlan,
+	.dr_create_flow_action_pop_vlan =
+		mlx5_glue_dr_create_flow_action_pop_vlan,
+	.dr_create_flow_tbl = mlx5_glue_dr_create_flow_tbl,
+	.dr_destroy_flow_tbl = mlx5_glue_dr_destroy_flow_tbl,
+	.dr_create_domain = mlx5_glue_dr_create_domain,
+	.dr_destroy_domain = mlx5_glue_dr_destroy_domain,
+	.dr_sync_domain = mlx5_glue_dr_sync_domain,
+	.dv_create_cq = mlx5_glue_dv_create_cq,
+	.dv_create_wq = mlx5_glue_dv_create_wq,
+	.dv_query_device = mlx5_glue_dv_query_device,
+	.dv_set_context_attr = mlx5_glue_dv_set_context_attr,
+	.dv_init_obj = mlx5_glue_dv_init_obj,
+	.dv_create_qp = mlx5_glue_dv_create_qp,
+	.dv_create_flow_matcher = mlx5_glue_dv_create_flow_matcher,
+	.dv_create_flow_matcher_root = __mlx5_glue_dv_create_flow_matcher,
+	.dv_create_flow = mlx5_glue_dv_create_flow,
+	.dv_create_flow_root = __mlx5_glue_dv_create_flow,
+	.dv_create_flow_action_counter =
+		mlx5_glue_dv_create_flow_action_counter,
+	.dv_create_flow_action_dest_ibv_qp =
+		mlx5_glue_dv_create_flow_action_dest_ibv_qp,
+	.dv_create_flow_action_dest_devx_tir =
+		mlx5_glue_dv_create_flow_action_dest_devx_tir,
+	.dv_create_flow_action_modify_header =
+		mlx5_glue_dv_create_flow_action_modify_header,
+	.dv_create_flow_action_modify_header_root =
+		__mlx5_glue_dv_create_flow_action_modify_header,
+	.dv_create_flow_action_packet_reformat =
+		mlx5_glue_dv_create_flow_action_packet_reformat,
+	.dv_create_flow_action_packet_reformat_root =
+		__mlx5_glue_dv_create_flow_action_packet_reformat,
+	.dv_create_flow_action_tag =  mlx5_glue_dv_create_flow_action_tag,
+	.dv_create_flow_action_meter = mlx5_glue_dv_create_flow_action_meter,
+	.dv_modify_flow_action_meter = mlx5_glue_dv_modify_flow_action_meter,
+	.dv_create_flow_action_aso = mlx5_glue_dv_create_flow_action_aso,
+	.dr_create_flow_action_default_miss =
+		mlx5_glue_dr_create_flow_action_default_miss,
+	.dv_destroy_flow = mlx5_glue_dv_destroy_flow,
+	.dv_destroy_flow_matcher = mlx5_glue_dv_destroy_flow_matcher,
+	.dv_destroy_flow_matcher_root = __mlx5_glue_dv_destroy_flow_matcher,
+	.dv_open_device = mlx5_glue_dv_open_device,
+	.devx_obj_create = mlx5_glue_devx_obj_create,
+	.devx_obj_destroy = mlx5_glue_devx_obj_destroy,
+	.devx_obj_query = mlx5_glue_devx_obj_query,
+	.devx_obj_modify = mlx5_glue_devx_obj_modify,
+	.devx_general_cmd = mlx5_glue_devx_general_cmd,
+	.devx_create_cmd_comp = mlx5_glue_devx_create_cmd_comp,
+	.devx_destroy_cmd_comp = mlx5_glue_devx_destroy_cmd_comp,
+	.devx_obj_query_async = mlx5_glue_devx_obj_query_async,
+	.devx_get_async_cmd_comp = mlx5_glue_devx_get_async_cmd_comp,
+	.devx_umem_reg = mlx5_glue_devx_umem_reg,
+	.devx_umem_dereg = mlx5_glue_devx_umem_dereg,
+	.devx_qp_query = mlx5_glue_devx_qp_query,
+	.devx_wq_query = mlx5_glue_devx_wq_query,
+	.devx_port_query = mlx5_glue_devx_port_query,
+	.dr_dump_domain = mlx5_glue_dr_dump_domain,
+	.dr_dump_rule = mlx5_glue_dr_dump_single_rule,
+	.dr_reclaim_domain_memory = mlx5_glue_dr_reclaim_domain_memory,
+	.dr_create_flow_action_sampler =
+		mlx5_glue_dr_create_flow_action_sampler,
+	.dr_create_flow_action_dest_array =
+		mlx5_glue_dr_action_create_dest_array,
+	.dr_allow_duplicate_rules = mlx5_glue_dr_allow_duplicate_rules,
+	.devx_query_eqn = mlx5_glue_devx_query_eqn,
+	.devx_create_event_channel = mlx5_glue_devx_create_event_channel,
+	.devx_destroy_event_channel = mlx5_glue_devx_destroy_event_channel,
+	.devx_subscribe_devx_event = mlx5_glue_devx_subscribe_devx_event,
+	.devx_subscribe_devx_event_fd = mlx5_glue_devx_subscribe_devx_event_fd,
+	.devx_get_event = mlx5_glue_devx_get_event,
+	.devx_alloc_uar = mlx5_glue_devx_alloc_uar,
+	.devx_free_uar = mlx5_glue_devx_free_uar,
+	.dv_alloc_var = mlx5_glue_dv_alloc_var,
+	.dv_free_var = mlx5_glue_dv_free_var,
+	.dv_alloc_pp = mlx5_glue_dv_alloc_pp,
+	.dv_free_pp = mlx5_glue_dv_free_pp,
+	.dr_create_flow_action_send_to_kernel =
+		mlx5_glue_dr_create_flow_action_send_to_kernel,
+};
 
 
 mlx5_os_get_ibv_dev
@@ -1222,4 +1317,102 @@ vfio
 usertools/dpdk-devbind.py
 
 
+
+mlx5_os_net_probe(struct mlx5_common_device *cdev, struct mlx5_kvargs_ctrl *mkvlist)
+    mlx5_pmd_socket_init -> 
+        socket, fcntl, bind, listen -> #define MLX5_SOCKET_PATH "/var/tmp/dpdk_net_mlx5_%d"
+        server_intr_handle = mlx5_os_interrupt_handler_create(RTE_INTR_INSTANCE_F_PRIVATE, false, server_socket, mlx5_pmd_socket_handle, NULL)
+            tmp_intr_handle = rte_intr_instance_alloc(mode)
+            rte_intr_fd_set
+            rte_intr_type_set
+            rte_intr_callback_register
+                callback->cb_fn = cb -> mlx5_pmd_socket_handle
+    mlx5_init_once
+        mlx5_init_shared_data
+        mlx5_mp_init_primary(MLX5_MP_NAME, mlx5_mp_os_primary_handle)
+            rte_mp_action_register(name, primary_action)
+                entry = malloc(sizeof(struct action_entry))
+                TAILQ_INSERT_TAIL(&action_entry_list, entry, next)
+        mlx5_mp_init_secondary(MLX5_MP_NAME, mlx5_mp_os_secondary_handle)
+    mlx5_probe_again_args_validate
+        mlx5_shared_dev_ctx_args_config(sh, mkvlist, config)
+            config->cnt_svc.service_core = rte_get_main_lcore()
+            mlx5_kvargs_process(mkvlist, params, mlx5_dev_args_check_handler, config)
+            mlx5_devx_obj_ops_en
+    mlx5_os_pci_probe
+    or mlx5_os_auxiliary_probe
+        mlx5_os_parse_eth_devargs
+        mlx5_auxiliary_get_ifindex
+        mlx5_dev_spawn
+            rte_eth_dev_get_port_by_name
+            mlx5_alloc_shared_dev_ctx
+            mlx5_proc_priv_init
+            eth_dev->rx_pkt_burst = mlx5_select_rx_function(eth_dev)
+            eth_dev->tx_pkt_burst = mlx5_select_tx_function(eth_dev)
+            priv->representor_id = mlx5_representor_id_encode(switch_info, eth_da->type)
+            rte_eth_switch_domain_alloc
+            mlx5_port_args_config
+            rte_eth_dev_allocate
+            mlx5_get_mtu
+            eth_dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+        rte_eth_dev_probing_finish
+
+
+
+
+mlx5_mp_os_primary_handle
+    mlx5_mp_os_handle_port_agnostic
+    rte_eth_dev_is_valid_port
+    case MLX5_MP_REQ_QUEUE_TX_START
+        mlx5_tx_queue_start_primary
+            txq_obj_modify -> mlx5_txq_devx_modify
+                mlx5_devx_cmd_modify_sq
+                    MLX5_SET(modify_sq_in, in, opcode, MLX5_CMD_OP_MODIFY_SQ)
+                    ret = mlx5_glue->devx_obj_modify(sq->obj, in, sizeof(in), out, sizeof(out)) -> mlx5_glue_devx_obj_modify
+                        return devx_cmd(GET_OBJ_CTX(obj), in, inlen, out, outlen) -> return execute_ioctl(((struct devx_context *)ctx)->cmd_fd, cmd) -> https://github.com/Mellanox/devx/blob/master/src/devx.c
+
+
+
+rte_eth_dev_tx_queue_start(uint16_t port_id, uint16_t tx_queue_id)
+    eth_dev_validate_tx_queue
+    rte_eth_dev_is_tx_hairpin_queue
+    dev->dev_ops->tx_queue_start(dev, tx_queue_id) -> mlx5_tx_queue_start
+        txq_obj_modify
+
+
+
+
+REGISTER_TEST_COMMAND(latencystats_autotest, test_latencystats)
+    test_latency_packet_forward
+
+
+
+dpdk test plan: https://doc.dpdk.org/dts/test_plans/index.html
+
+e810 rx timestamp: https://doc.dpdk.org/dts/test_plans/rx_timestamp_perf_test_plan.html
+ <build_dir>/app/dpdk-testpmd -l 5,6 -n 8 --force-max-simd-bitwidth=64 \
+ -- -i --portmask=0x3 --rxq=1 --txq=1 --txd=1024 --rxd=1024 --forward=mac \
+ --nb-cores=1 --enable-rx-timestamp
+
+Note:
+  -force-max-simd-bitwidth: Set 64, the feature only support 64.
+  -enable-rx-timestamp: enable rx-timestamp.
+
+
+使用 E810 对标头分割转发的性能进行基准测试: https://doc.dpdk.org/dts/test_plans/ice_header_split_perf_test_plan.html
+bind: ./usertools/dpdk-devbind.py -b vfio-pci 17:00.0 4b:00.0
+<build_dir>/app/dpdk-testpmd -l 5,6 -n 8 --force-max-simd-bitwidth=64 \
+ -- -i --portmask=0x3 --rxq=1 --txq=1 --txd=1024 --rxd=1024 --forward=rxonly \
+ --nb-cores=1 --mbuf-size=2048,2048
+port start all
+start
+
+
+
+
+
+fs_tx_queue_start
+
+
+testpmd + pdump
 

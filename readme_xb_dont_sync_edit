@@ -1,0 +1,653 @@
+
+
+helloworld -> examples/helloworld/main.c
+main(int argc, char **argv)
+rte_eal_init
+    rte_eal_get_configuration
+    eal_get_internal_configuration
+    rte_cpu_is_supported
+    eal_reset_internal_config
+    eal_log_level_parse
+    eal_save_args
+    rte_eal_cpu_init
+    eal_parse_args
+    eal_plugins_init
+    ...
+    rte_config_init
+        ...
+        pathname -> /run/user/1020/dpdk/rte/config
+        ...
+        eal_mem_reserve
+            addr:0x100000000 size: 28672
+            ...
+            mmap(requested_addr, size, prot, flags, fd, offset);
+    rte_eal_using_phys_addrs
+        rte_eal_has_hugepages -> no_hugetlbfs -> default use hugepage
+        rte_mem_virt2phy
+            return RTE_BAD_IOVA
+    rte_bus_get_iommu_class
+    if (internal_conf->no_hugetlbfs == 0)
+        hugepage_info_init
+        create_shared_memory
+rte_eal_remote_launch(lcore_hello, NULL, lcore_id)
+lcore_hello
+
+
+map_all_hugepages
+
+
+
+
+map_shared_memory
+    open(filename, flags, 0600)
+    ftruncate(fd, mem_size)
+    retval = mmap(NULL, mem_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+
+eal_log_init
+    log_stream = fopencookie(NULL, "w+", console_log_func)
+    openlog(id, LOG_NDELAY | LOG_PID, facility)
+    eal_log_set_default
+
+
+rte_eal_vfio_setup
+    rte_vfio_enable("vfio")
+    rte_eal_check_module
+    /sys/module/vfio
+    rte_vfio_get_container_fd
+    open(VFIO_CONTAINER_PATH, O_RDWR) -> open /dev/vfio/vfio
+    static const struct vfio_iommu_type iommu_types[]
+
+
+
+
+rte_eal_memzone_init
+    rte_fbarray_init(&mcfg->memzones, "memzone",
+    fully_validate
+    rte_mem_page_size
+    eal_get_virtual_area
+    eal_get_fbarray_path
+    eal_file_open
+    resize_and_map
+    map_addr = rte_mem_map(addr, len, RTE_PROT_READ | RTE_PROT_WRITE, RTE_MAP_SHARED | RTE_MAP_FORCE_ADDRESS, fd, 0);
+    TAILQ_INSERT_TAIL(&mem_area_tailq, ma, next)
+
+
+rte_eal_memory_init
+    rte_eal_memseg_init
+        memseg_primary_init -> eal_dynmem_memseg_lists_init
+            eal_memseg_list_init
+                eal_memseg_list_init_named
+
+            eal_memseg_list_alloc
+    eal_memalloc_init
+        (rte_memseg_list_walk(fd_list_create_walk, NULL)
+            alloc_list
+
+    rte_eal_hugepage_init
+        eal_legacy_hugepage_init or
+        eal_dynmem_hugepage_init
+            eal_dynmem_calc_num_pages_per_socket
+    or rte_eal_hugepage_attach
+    rte_eal_memdevice_init
+
+
+rte_eal_malloc_heap_init
+    malloc_add_seg
+
+
+RTE_LCORE_FOREACH_WORKER(i)
+    pipe(lcore_config[i].pipe_main2worker
+    eal_worker_thread_create
+        if (pthread_create(&lcore_config[lcore_id].thread_id, attrp, eal_thread_loop, (void *)(uintptr_t)lcore_id) == 0)
+            eal_thread_wait_command
+                n = read(m2w, &c, 1);
+            eal_thread_ack_command
+                n = write(w2m, &c, 1) <- eal_thread_wake_worker
+    pthread_setaffinity_np
+    rte_eal_mp_remote_launch(sync_func, NULL, SKIP_MAIN)
+        rte_eal_remote_launch(f, arg, lcore_id)
+            __atomic_store_n(&lcore_config[worker_id].f, f, __ATOMIC_RELEASE)
+            eal_thread_wake_worker
+    rte_eal_mp_wait_lcore
+
+
+rte_service_init
+    rte_services = rte_calloc("rte_services",
+
+
+rte_bus_probe
+    TAILQ_FOREACH(bus, &rte_bus_list, next) <- rte_bus_register <- RTE_REGISTER_BUS
+        bus->probe() -> pci_probe_all_drivers
+    vbus->probe()
+        auxiliary_probe(void)
+        rte_dpaa_bus_probe
+        rte_fslmc_probe
+        ifpga_probe
+        pci_probe(void)
+
+vfio_mp_sync_setup
+    rte_mp_action_register
+        name: eal_vfio_mp_sync
+        entry = malloc(sizeof(struct action_entry));
+        find_action_entry_by_name
+        TAILQ_INSERT_TAIL(&action_entry_list, entry, next)
+
+
+rte_service_start_with_defaults
+
+eal_clean_runtime_dir
+
+
+RTE_REGISTER_BUS(pci, rte_pci_bus.bus);
+struct rte_pci_bus rte_pci_bus = {
+	.bus = {
+		.scan = rte_pci_scan,
+		.probe = pci_probe,
+		.cleanup = pci_cleanup,
+		.find_device = pci_find_device,
+		.plug = pci_plug,
+		.unplug = pci_unplug,
+		.parse = pci_parse,
+		.devargs_parse = rte_pci_devargs_parse,
+		.dma_map = pci_dma_map,
+		.dma_unmap = pci_dma_unmap,
+		.get_iommu_class = rte_pci_get_iommu_class,
+		.dev_iterate = rte_pci_dev_iterate,
+		.hot_unplug_handler = pci_hot_unplug_handler,
+		.sigbus_handler = pci_sigbus_handler,
+	},
+	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
+	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),
+};
+
+
+
+EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
+
+
+pci_probe(void)
+    FOREACH_DEVICE_ON_PCIBUS <- RTE_PMD_REGISTER_PCI -> register pci device
+        pci_probe_all_drivers
+            FOREACH_DRIVER_ON_PCIBUS
+                rte_pci_probe_one_driver
+                    rte_pci_match
+                    ...
+                    hisi_dma_pmd_drv
+                    idxd_pmd_drv_pci
+                    ioat_pmd_drv
+                    rte_ark_pmd
+                    rte_cxgbe_pmd
+                    rte_igb_pmd
+                    rte_ice_pmd
+                    mlx5_common_pci_driver <- rte_pci_register(&mlx5_common_pci_driver);
+                    rte_virtio_net_pci_pmd
+                    ...
+                    ret = dr->probe(dr, dev) -> mlx5_common_pci_probe
+                        mlx5_common_dev_probe
+                            device: 0000:08:00.0 (socket 0)
+                            mlx5_kvargs_prepare
+                            parse_class_options
+                            classes = MLX5_CLASS_ETH
+                            cdev = to_mlx5_device(eal_dev)
+                            cdev = mlx5_common_dev_create(eal_dev, classes, mkvlist_p)
+                                rte_zmalloc("mlx5_common_device", sizeof(*cdev), 0)
+                                mlx5_common_config_get
+                                mlx5_malloc_mem_select
+                                mlx5_dev_hw_global_prepare  
+                                    mlx5_os_open_device
+                                        mlx5_open_device
+                                            mlx5_os_get_ibv_dev
+                                                mlx5_os_get_ibv_device
+                                                    ibv_get_device_list
+                                                    mlx5_get_device_guid(addr, guid1, sizeof(guid1))
+                                                        snprintf(tmp, sizeof(tmp), "/sys/bus/pci/devices/%04x:%02x:%02x.%x/net", dev->domain, dev->bus, dev->devid, dev->function)
+                                                        opendir
+                                                        readdir
+                                                        ret = fscanf(id_file, "%16s", guid)
+                                                    mlx5_get_pci_addr
+                                                        fopen path /sys/class/infiniband/mlx5_33
+                                                        fgets(line, sizeof(line), file
+                                                    mlx5_get_device_guid
+                                                    rte_pci_addr_cmp
+                                                    free_device_list
+                                            mlx5_config_doorbell_mapping_env
+                                            ctx = mlx5_glue->dv_open_device(ibv) -> mlx5dv_open_device
+                                            mlx5_restore_doorbell_mapping_env
+                                                unsetenv(MLX5_SHUT_UP_BF)
+                                        mlx5_set_context_attr
+                                            struct mlx5dv_ctx_allocators allocator = {
+                                                .alloc = &mlx5_alloc_verbs_buf,
+                                                    rte_mem_page_size
+                                                    mlx5_malloc
+                                                .free = &mlx5_free_verbs_buf,
+                                                .data = dev,
+                                            };
+                                            dv_set_context_attr
+                                    mlx5_devx_cmd_query_hca_attr
+                                        mlx5_devx_get_hca_cap
+                                            MLX5_CMD_OP_QUERY_HCA_CAP
+                                            devx_general_cmd -> mlx5dv_devx_general_cmd
+                                    mlx5_os_pd_prepare
+                                        mlx5_os_pd_create -> ibv_alloc_pd
+                                    dv_init_obj -> mlx5dv_init_obj
+                                    mlx5_mr_create_cache
+                                        mlx5_os_set_reg_mr_cb
+                                            *reg_mr_cb = mlx5_common_verbs_reg_mr
+                                            *dereg_mr_cb = mlx5_common_verbs_dereg_mr
+                                        mlx5_mr_btree_init -> Initialize B-tree and allocate memory for global MR cache table
+                                            bt->table = mlx5_malloc
+                                        rte_mem_event_callback_register("MLX5_MEM_EVENT_CB", mlx5_mr_mem_event_cb, NULL)
+                                            eal_memalloc_mem_event_callback_register
+                                                find_mem_event_callback
+                                                TAILQ_INSERT_TAIL(&mem_event_callback_list, entry, next)
+                            is_valid_class_combination
+                            drivers_probe
+                                mlx5_bus_match -> mlx5_dev_pci_match
+                                driver->probe(cdev, mkvlist) -> mlx5_os_net_probe
+                                    mlx5_pmd_socket_init
+                                        ...
+                                        listen(server_socket, 0)
+                                        mlx5_os_interrupt_handler_create mlx5_pmd_socket_handle
+                                    mlx5_init_once
+                                        mlx5_init_shared_data
+                                            rte_memzone_reserve(MZ_MLX5_PMD_SHARED_DATA
+                                        switch (rte_eal_process_type())
+                                        case RTE_PROC_PRIMARY
+                                            mlx5_mp_init_primary(MLX5_MP_NAME, mlx5_mp_os_primary_handle)
+                                                rte_mp_action_register
+                                    mlx5_probe_again_args_validate
+                                    mlx5_os_pci_probe
+                                        mlx5_os_parse_eth_devargs
+                                        ret = mlx5_os_pci_probe_pf(cdev, &eth_da, 0, mkvlist)
+                                            get_device_list
+                                            int nl_route = mlx5_nl_init(NETLINK_ROUTE, 0)
+                                            int nl_rdma = mlx5_nl_init(NETLINK_RDMA, 0)
+                                            mlx5_device_bond_pci_match
+                                            mlx5_nl_portnum
+                                                mlx5_nl_send(nl, &req, sn)
+                                            mlx5_nl_switch_info
+                                            mlx5_sysfs_switch_info
+                                            qsort(list, ns, sizeof(*list), mlx5_dev_spawn_data_cmp)
+                                            mlx5_dev_spawn
+                                                mlx5_alloc_shared_dev_ctx
+                                                mlx5_glue->query_port -> ibv_query_port
+                                                mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+                                                mlx5_imported_pd_and_ctx
+                                                mlx5_representor_id_encode
+                                                rte_eth_switch_domain_alloc
+                                                reg_c_mask &= 0xfc
+                                                mlx5_aso_flow_mtrs_mng_init
+                                                mlx5_port_args_config
+                                                eth_dev = rte_eth_dev_allocate(name)
+                                                mlx5_get_mac
+                                                eth_dev->rx_pkt_burst = rte_eth_pkt_burst_dummy
+                                                eth_dev->dev_ops = &mlx5_dev_ops
+                                                mlx5_l3t_create
+                                                mlx5_link_update
+                                                mlx5_set_link_up
+                                                priv->flows[i] = mlx5_ipool_create(&icfg[i])
+                                                mlx5_vlan_vmwa_init
+                                                mlx5_alloc_shared_dr
+                                                    dr_create_domain
+                                                    dr_create_flow_action_pop_vlan
+                                                    __mlx5_discovery_misc5_cap
+                                                    dr_create_flow_action_default_miss
+                                                mlx5_flex_item_port_init
+                                                mlx5_queue_counter_id_prepare
+                                                mlx5_drop_action_create
+                                                mlx5_list_create("hrxq"
+                                                mlx5_flow_discover_priorities
+                                                mlx5_flow_discover_mreg_c
+                                                mlx5_flow_ext_mreg_supported
+                                                mlx5_flow_counter_mode_config
+                                                mlx5_flow_drop_action_config
+                                            rte_eth_copy_pci_info
+                                            rte_eth_dev_probing_finish
+                                mlx5_os_pci_probe
+                                    mlx5_os_pci_probe_pf
+                                        mlx5_dev_spawn
+                                            rte_eth_switch_domain_alloc
+                            mlx5_kvargs_validate
+
+
+
+enum mlx5_class {
+	MLX5_CLASS_INVALID,
+	MLX5_CLASS_ETH = RTE_BIT64(0),
+	MLX5_CLASS_VDPA = RTE_BIT64(1),
+	MLX5_CLASS_REGEX = RTE_BIT64(2),
+	MLX5_CLASS_COMPRESS = RTE_BIT64(3),
+	MLX5_CLASS_CRYPTO = RTE_BIT64(4),
+};
+
+
+drivers/common/mlx5/mlx5_common_pci.c
+
+drivers/net/mlx5/mlx5.c
+RTE_INIT(rte_mlx5_pmd_init)
+    mlx5_common_init
+
+
+mlx5_os_get_ibv_dev
+mlx5_os_get_ibv_device
+
+
+rte_telemetry_init
+    telemetry_v2_init
+        rte_telemetry_register_cmd("/"
+            callbacks[i].fn = fn
+        rte_telemetry_register_cmd("/info"
+        v2_socket.sock = create_socket(v2_socket.path)
+        pthread_create(&t_new, NULL, socket_listener, &v2_socket)
+            int s_accepted = accept(s->sock, NULL, NULL)
+            pthread_create(&th, NULL, s->fn,
+    or telemetry_legacy_init
+
+
+
+rte_log_register_type_and_pick_level
+
+
+eal_mcfg_complete
+    internal_conf->init_complete = 1;
+
+
+
+
+
+verification/st/dpdk/st_dpdk.c -> main -> rx
+rte_eal_init
+sprintf(dut2dpi_addr, "/home/common/st_socket/%s/dut2dpi", argv[1]);
+sprintf(dpi2dut_addr, "/home/common/st_socket/%s/dpi2dut", argv[1]);
+rte_eth_dev_count_avail
+rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
+RTE_ETH_FOREACH_DEV
+    port_init
+        rte_eth_dev_info_get
+        rte_eth_dev_configure
+        rte_eth_dev_adjust_nb_rx_tx_desc
+        rte_eth_rx_queue_setup
+        rte_eth_dev_socket_id
+        rte_eth_tx_queue_setup
+        rte_eth_dev_socket_id
+        rte_eth_dev_start
+        rte_eth_macaddr_get
+        rte_eth_promiscuous_enable
+RTE_LCORE_FOREACH_WORKER
+    rte_eal_remote_launch(lcore_dpdk2eda_rx, NULL, lcore_id)
+        init_server
+        RTE_ETH_FOREACH_DEV(port)
+            rte_eth_rx_burst(port, 0,
+            deal_dpdk2eda_msg -> deal_eda_dpdk_msg
+                epoll_wait
+                rqe_alloc_db
+                deal_listenfd_epollin
+                deal_clientfd_epollin
+                edamsg2pkt
+                    rte_pktmbuf_reset_headroom
+                    rte_memcpy(rte_pktmbuf_mtod_offset(pkt, char *, 0),
+                pkt2edamsg
+                epoll_ctl
+lcore_eda2dpdk_tx(mbuf_pool) -> tx
+    RTE_ETH_FOREACH_DEV(port)
+        init_server(&listenfd, &epollfd, dut2dpi_addr) -> 
+    for (;;)
+        RTE_ETH_FOREACH_DEV(port)
+            deal_eda2dpdk_msg(listenfd, epollfd, bufs, mbuf_pool) -> deal_eda_dpdk_msg
+                mbufs[trans_cnt] = rte_pktmbuf_alloc(mbuf_pool)
+                edamsg2pkt
+            rte_eth_tx_burst
+rte_eal_mp_wait_lcore
+
+
+
+
+struct rte_mbuf {
+    ...
+    void *buf_addr;
+    ...
+}
+
+
+
+dpdk init module, mlx5, 
+RTE_INIT(rte_mlx5_pmd_init) -> before main
+    mlx5_common_init
+        static bool mlx5_common_initialized;
+        mlx5_glue_constructor
+            mlx5_glue->fork_init()
+        mlx5_common_driver_init
+            mlx5_common_pci_init
+                pci_ids_table_update
+                    mlx5_pci_id_table = updated_table
+                rte_pci_register(&mlx5_common_pci_driver)
+                    TAILQ_INSERT_TAIL(&rte_pci_bus.driver_list, driver, next)
+            mlx5_common_auxiliary_init
+                rte_auxiliary_register(&mlx5_auxiliary_driver)
+                    TAILQ_INSERT_TAIL(&auxiliary_bus.driver_list, driver, next)
+                mlx5_common_auxiliary_initialized = true
+    mlx5_set_ptype_table
+    mlx5_set_cksum_table
+    mlx5_set_swp_types_table ->  Build a table to translate packet type of mbuf to SWP type of Verbs
+    mlx5_class_driver_register
+        mlx5_common_driver_on_register_pci
+        TAILQ_INSERT_TAIL(&drivers_list, driver, next)
+
+
+
+static struct rte_auxiliary_driver mlx5_auxiliary_driver = {
+	.driver = {
+		   .name = MLX5_AUXILIARY_DRIVER_NAME,
+	},
+	.match = mlx5_common_auxiliary_match,
+	.probe = mlx5_common_auxiliary_probe,
+	.remove = mlx5_common_auxiliary_remove,
+	.dma_map = mlx5_common_auxiliary_dma_map,
+	.dma_unmap = mlx5_common_auxiliary_dma_unmap,
+};
+
+
+
+/* HCA attributes. */
+struct mlx5_hca_attr {
+	uint32_t eswitch_manager:1;
+	uint32_t flow_counters_dump:1;
+	uint32_t mem_rq_rmp:1;
+	uint32_t log_max_rmp:5;
+	uint32_t log_max_rqt_size:5;
+	uint32_t parse_graph_flex_node:1;
+	uint8_t flow_counter_bulk_alloc_bitmap;
+	uint32_t eth_net_offloads:1;
+	uint32_t eth_virt:1;
+	uint32_t wqe_vlan_insert:1;
+	uint32_t csum_cap:1;
+	uint32_t vlan_cap:1;
+	uint32_t wqe_inline_mode:2;
+	uint32_t vport_inline_mode:3;
+	uint32_t tunnel_stateless_geneve_rx:1;
+	uint32_t geneve_max_opt_len:1; /* 0x0: 14DW, 0x1: 63DW */
+	uint32_t tunnel_stateless_gtp:1;
+	uint32_t max_lso_cap;
+	uint32_t scatter_fcs:1;
+	uint32_t lro_cap:1;
+	uint32_t tunnel_lro_gre:1;
+	uint32_t tunnel_lro_vxlan:1;
+	uint32_t tunnel_stateless_gre:1;
+	uint32_t tunnel_stateless_vxlan:1;
+	uint32_t swp:1;
+	uint32_t swp_csum:1;
+	uint32_t swp_lso:1;
+	uint32_t lro_max_msg_sz_mode:2;
+	uint32_t rq_delay_drop:1;
+	uint32_t lro_timer_supported_periods[MLX5_LRO_NUM_SUPP_PERIODS];
+	uint16_t lro_min_mss_size;
+	uint32_t flex_parser_protocols;
+	uint32_t max_geneve_tlv_options;
+	uint32_t max_geneve_tlv_option_data_len;
+	uint32_t hairpin:1;
+	uint32_t log_max_hairpin_queues:5;
+	uint32_t log_max_hairpin_wq_data_sz:5;
+	uint32_t log_max_hairpin_num_packets:5;
+	uint32_t hairpin_sq_wqe_bb_size:4;
+	uint32_t hairpin_sq_wq_in_host_mem:1;
+	uint32_t hairpin_data_buffer_locked:1;
+	uint32_t vhca_id:16;
+	uint32_t relaxed_ordering_write:1;
+	uint32_t relaxed_ordering_read:1;
+	uint32_t access_register_user:1;
+	uint32_t wqe_index_ignore:1;
+	uint32_t cross_channel:1;
+	uint32_t non_wire_sq:1; /* SQ with non-wire ops is supported. */
+	uint32_t log_max_static_sq_wq:5; /* Static WQE size SQ. */
+	uint32_t num_lag_ports:4; /* Number of ports can be bonded. */
+	uint32_t dev_freq_khz; /* Timestamp counter frequency, kHz. */
+	uint32_t scatter_fcs_w_decap_disable:1;
+	uint32_t flow_hit_aso:1; /* General obj type FLOW_HIT_ASO supported. */
+	uint32_t roce:1;
+	uint32_t wait_on_time:1;
+	uint32_t rq_ts_format:2;
+	uint32_t sq_ts_format:2;
+	uint32_t steering_format_version:4;
+	uint32_t qp_ts_format:2;
+	uint32_t regexp_params:1;
+	uint32_t regexp_version:3;
+	uint32_t reg_c_preserve:1;
+	uint32_t ct_offload:1; /* General obj type ASO CT offload supported. */
+	uint32_t crypto:1; /* Crypto engine is supported. */
+	uint32_t aes_xts:1; /* AES-XTS crypto is supported. */
+	uint32_t dek:1; /* General obj type DEK is supported. */
+	uint32_t import_kek:1; /* General obj type IMPORT_KEK supported. */
+	uint32_t credential:1; /* General obj type CREDENTIAL supported. */
+	uint32_t crypto_login:1; /* General obj type CRYPTO_LOGIN supported. */
+	uint32_t regexp_num_of_engines;
+	uint32_t log_max_ft_sampler_num:8;
+	uint32_t inner_ipv4_ihl:1;
+	uint32_t outer_ipv4_ihl:1;
+	uint32_t geneve_tlv_opt;
+	uint32_t cqe_compression:1;
+	uint32_t mini_cqe_resp_flow_tag:1;
+	uint32_t mini_cqe_resp_l3_l4_tag:1;
+	uint32_t pkt_integrity_match:1; /* 1 if HW supports integrity item */
+	struct mlx5_hca_qos_attr qos;
+	struct mlx5_hca_vdpa_attr vdpa;
+	struct mlx5_hca_flow_attr flow;
+	struct mlx5_hca_flex_attr flex;
+	int log_max_qp_sz;
+	int log_max_cq_sz;
+	int log_max_qp;
+	int log_max_cq;
+	uint32_t log_max_pd;
+	uint32_t log_max_mrw_sz;
+	uint32_t log_max_srq;
+	uint32_t log_max_srq_sz;
+	uint32_t rss_ind_tbl_cap;
+	uint32_t mmo_dma_sq_en:1;
+	uint32_t mmo_compress_sq_en:1;
+	uint32_t mmo_decompress_sq_en:1;
+	uint32_t mmo_dma_qp_en:1;
+	uint32_t mmo_compress_qp_en:1;
+	uint32_t mmo_decompress_qp_en:1;
+	uint32_t mmo_regex_qp_en:1;
+	uint32_t mmo_regex_sq_en:1;
+	uint32_t compress_min_block_size:4;
+	uint32_t log_max_mmo_dma:5;
+	uint32_t log_max_mmo_compress:5;
+	uint32_t log_max_mmo_decompress:5;
+	uint32_t umr_modify_entity_size_disabled:1;
+	uint32_t umr_indirect_mkey_disabled:1;
+	uint32_t log_min_stride_wqe_sz:5;
+	uint32_t esw_mgr_vport_id_valid:1; /* E-Switch Mgr vport ID is valid. */
+	uint32_t crypto_wrapped_import_method:1;
+	uint16_t esw_mgr_vport_id; /* E-Switch Mgr vport ID . */
+	uint16_t max_wqe_sz_sq;
+	uint32_t set_reg_c:8;
+	uint32_t nic_flow_table:1;
+	uint32_t modify_outer_ip_ecn:1;
+	union {
+		uint32_t max_flow_counter;
+		struct {
+			uint16_t max_flow_counter_15_0;
+			uint16_t max_flow_counter_31_16;
+		};
+	};
+	uint32_t flow_counter_bulk_log_max_alloc:5;
+	uint32_t flow_counter_bulk_log_granularity:5;
+	uint32_t alloc_flow_counter_pd:1;
+	uint32_t flow_counter_access_aso:1;
+	uint32_t flow_access_aso_opc_mod:8;
+};
+
+
+
+
+const struct eth_dev_ops mlx5_dev_ops = {
+	.dev_configure = mlx5_dev_configure,
+	.dev_start = mlx5_dev_start,
+	.dev_stop = mlx5_dev_stop,
+	.dev_set_link_down = mlx5_set_link_down,
+	.dev_set_link_up = mlx5_set_link_up,
+	.dev_close = mlx5_dev_close,
+	.promiscuous_enable = mlx5_promiscuous_enable,
+	.promiscuous_disable = mlx5_promiscuous_disable,
+	.allmulticast_enable = mlx5_allmulticast_enable,
+	.allmulticast_disable = mlx5_allmulticast_disable,
+	.link_update = mlx5_link_update,
+	.stats_get = mlx5_stats_get,
+	.stats_reset = mlx5_stats_reset,
+	.xstats_get = mlx5_xstats_get,
+	.xstats_reset = mlx5_xstats_reset,
+	.xstats_get_names = mlx5_xstats_get_names,
+	.fw_version_get = mlx5_fw_version_get,
+	.dev_infos_get = mlx5_dev_infos_get,
+	.representor_info_get = mlx5_representor_info_get,
+	.read_clock = mlx5_txpp_read_clock,
+	.dev_supported_ptypes_get = mlx5_dev_supported_ptypes_get,
+	.vlan_filter_set = mlx5_vlan_filter_set,
+	.rx_queue_setup = mlx5_rx_queue_setup,
+	.rx_queue_avail_thresh_set = mlx5_rx_queue_lwm_set,
+	.rx_queue_avail_thresh_query = mlx5_rx_queue_lwm_query,
+	.rx_hairpin_queue_setup = mlx5_rx_hairpin_queue_setup,
+	.tx_queue_setup = mlx5_tx_queue_setup,
+	.tx_hairpin_queue_setup = mlx5_tx_hairpin_queue_setup,
+	.rx_queue_release = mlx5_rx_queue_release,
+	.tx_queue_release = mlx5_tx_queue_release,
+	.rx_queue_start = mlx5_rx_queue_start,
+	.rx_queue_stop = mlx5_rx_queue_stop,
+	.tx_queue_start = mlx5_tx_queue_start,
+	.tx_queue_stop = mlx5_tx_queue_stop,
+	.flow_ctrl_get = mlx5_dev_get_flow_ctrl,
+	.flow_ctrl_set = mlx5_dev_set_flow_ctrl,
+	.mac_addr_remove = mlx5_mac_addr_remove,
+	.mac_addr_add = mlx5_mac_addr_add,
+	.mac_addr_set = mlx5_mac_addr_set,
+	.set_mc_addr_list = mlx5_set_mc_addr_list,
+	.mtu_set = mlx5_dev_set_mtu,
+	.vlan_strip_queue_set = mlx5_vlan_strip_queue_set,
+	.vlan_offload_set = mlx5_vlan_offload_set,
+	.reta_update = mlx5_dev_rss_reta_update,
+	.reta_query = mlx5_dev_rss_reta_query,
+	.rss_hash_update = mlx5_rss_hash_update,
+	.rss_hash_conf_get = mlx5_rss_hash_conf_get,
+	.flow_ops_get = mlx5_flow_ops_get,
+	.rxq_info_get = mlx5_rxq_info_get,
+	.txq_info_get = mlx5_txq_info_get,
+	.rx_burst_mode_get = mlx5_rx_burst_mode_get,
+	.tx_burst_mode_get = mlx5_tx_burst_mode_get,
+	.rx_queue_intr_enable = mlx5_rx_intr_enable,
+	.rx_queue_intr_disable = mlx5_rx_intr_disable,
+	.is_removed = mlx5_is_removed,
+	.udp_tunnel_port_add  = mlx5_udp_tunnel_port_add,
+	.get_module_info = mlx5_get_module_info,
+	.get_module_eeprom = mlx5_get_module_eeprom,
+	.hairpin_cap_get = mlx5_hairpin_cap_get,
+	.mtr_ops_get = mlx5_flow_meter_ops_get,
+	.hairpin_bind = mlx5_hairpin_bind,
+	.hairpin_unbind = mlx5_hairpin_unbind,
+	.hairpin_get_peer_ports = mlx5_hairpin_get_peer_ports,
+	.hairpin_queue_peer_update = mlx5_hairpin_queue_peer_update,
+	.hairpin_queue_peer_bind = mlx5_hairpin_queue_peer_bind,
+	.hairpin_queue_peer_unbind = mlx5_hairpin_queue_peer_unbind,
+	.get_monitor_addr = mlx5_get_monitor_addr,
+};
+
