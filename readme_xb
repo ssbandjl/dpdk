@@ -20,7 +20,12 @@ mellanox的驱动在drivers/common/mlx5和drivers/net/mlx5目录下。common目�
 
 
 
-Longest Prefix matching: lib\lpm\rte_lpm.h
+LPM, 最长掩码匹配, Longest Prefix matching: lib\lpm\rte_lpm.h
+struct rte_lpm_tbl_entry
+
+rte_lpm_create(const char *name, int socket_id, const struct rte_lpm_config *config)
+
+
 
 
 rte_distributor_process -> 处理一组数据包并将其分发给worker
@@ -756,10 +761,6 @@ pci_probe(void)
 
 drivers/common/mlx5/mlx5_common_pci.c
 
-drivers/net/mlx5/mlx5.c
-RTE_INIT(rte_mlx5_pmd_init)
-    mlx5_common_init
-
 
 mlx5_os_get_ibv_dev
 mlx5_os_get_ibv_device
@@ -786,13 +787,39 @@ eal_mcfg_complete
 
 
 
+RTE_PMD_REGISTER_VDEV(net_virtio_user, virtio_user_driver)
+static struct rte_vdev_driver virtio_user_driver = {
+	.probe = virtio_user_pmd_probe,
+	.remove = virtio_user_pmd_remove,
+	.dma_map = virtio_user_pmd_dma_map,
+	.dma_unmap = virtio_user_pmd_dma_unmap,
+};
+
+vdpa
+https://www.redhat.com/en/blog/vdpa-kernel-framework-part-3-usage-vms-and-containers
+host模拟出/dev/vhost-vdpa0设备，容器中的testpmd接管设备，使用virtio-user driver
+testpmd接管参考命令如下
+./dpdk-testpmd -l 2-3 -n 4 --file-prefix=test --vdev=net_virtio_user0,path=/dev/vhost-vdpa-0,queues=1 – --forward-mode=sim -i -a
 
 testpmd_funcs.rst, https://dpdk.readthedocs.io/en/v1.8.0/testpmd_app_ug/testpmd_funcs.html
 user guider: https://doc.dpdk.org/guides/testpmd_app_ug/
 run app: https://doc.dpdk.org/guides/testpmd_app_ug/run_app.html
 ./dpdk-testpmd -l 0-3 -n 4 -- -i --portmask=0x1 --nb-cores=2
-app\test-pmd\testpmd.c -> main, https://blog.csdn.net/hhd1988/article/details/123237172
+app\test-pmd\testpmd.c -> main, https://blog.csdn.net/hhd1988/article/details/123237172, virtio-user pmd driver 跟 host 协商过程: https://blog.csdn.net/jyshappy/article/details/126718739
     rte_eal_init
+        rte_bus_probe
+            ret = bus->probe()
+            vbus->probe() -> vdev_probe
+                vdev_probe_all_drivers
+                    driver->probe(dev) -> virtio_user_pmd_probe
+                        eth_virtio_dev_init
+                            virtio_init_device
+                                virtio_set_status(hw, VIRTIO_CONFIG_STATUS_ACK)
+                                virtio_set_status(hw, VIRTIO_CONFIG_STATUS_DRIVER)
+                                virtio_ethdev_negotiate_features
+                                    host_features = VIRTIO_OPS(hw)->get_features(hw)
+                        virtio_user_dev_init
+                            virtio_dev_construct(vdev, name, &virtio_user_ops, dev)
     register_eth_event_callback
     init_port
     set_def_fwd_config
@@ -805,6 +832,24 @@ app\test-pmd\testpmd.c -> main, https://blog.csdn.net/hhd1988/article/details/12
     start_packet_forwarding
     rte_eal_cleanup
 
+
+static const struct virtio_dev_ops virtio_user_ops = {
+    .read_dev_cfg	= virtio_user_read_dev_config,
+    .write_dev_cfg	= virtio_user_write_dev_config,
+    .get_status	= virtio_user_get_status,
+    .set_status	= virtio_user_set_status,
+        virtio_user_dev_set_status(dev, status)
+            ret = dev->ops->set_status(dev, status)
+    .get_features	= virtio_user_get_features,
+    .set_features	= virtio_user_set_features,
+    .destruct_dev	= virtio_user_destroy,
+    .get_queue_size	= virtio_user_get_queue_size,
+    .setup_queue	= virtio_user_setup_queue,
+    .del_queue	= virtio_user_del_queue,
+    .notify_queue	= virtio_user_notify_queue,
+    .dump_json_info = virtio_user_dump_json_info,
+    .write_json_config = virtio_user_write_json_config,
+};
 
 
 struct fwd_engine io_fwd_engine = {
@@ -851,6 +896,85 @@ cmdline_parse_inst_t cmd_showport = {
 };
 
 
+
+
+./dpdk-vdpa -c 0x2 -n 4 --socket-mem 1024,1024 \
+        -a 0000:06:00.3,vdpa=1 -a 0000:06:00.4,vdpa=1 \
+        -- --interactive
+or
+./dpdk-vdpa -c 0x2 -n 4 --socket-mem 1024,1024 -w 0000:06:00.3,vdpa=1 -w 0000:06:00.4,vdpa=1
+
+dpdk/examples/vdpa/main.c
+    cl = cmdline_stdin_new(main_ctx, "vdpa> ")
+    cmdline_interact(cl)
+    or start_vdpa(&vports[devcnt])
+        rte_vhost_driver_register(socket_path, vport->flags)
+        rte_vhost_driver_callback_register(socket_path,	&vdpa_sample_devops)
+        rte_vhost_driver_attach_vdpa_device(socket_path, vport->dev)
+            vsocket->vdpa_dev = dev -> 将vDPA的deviceid记录在vsocket结构中，这样就将vhost和vDPA设备关联起来
+        rte_vhost_driver_get_vdpa_dev_type
+        vdpa_blk_device_set_features_and_protocol
+        rte_vhost_driver_start
+
+static const struct rte_vhost_device_ops vdpa_sample_devops = {
+	.new_device = new_device,
+	.destroy_device = destroy_device,
+};
+
+
+-w
+RTE_INIT(rte_mlx5_vdpa_init)
+    mlx5_common_init()
+        mlx5_glue_constructor
+            setenv("RDMAV_HUGEPAGES_SAFE", "1", 1)
+            setenv("MLX5_CQE_SIZE", "128", 0)
+            setenv("MLX5_DEVICE_FATAL_CLEANUP", "1", 1)
+        mlx5_common_driver_init
+            mlx5_common_pci_init
+    mlx5_class_driver_register(&mlx5_vdpa_driver)
+static struct mlx5_class_driver mlx5_vdpa_driver = {
+	.drv_class = MLX5_CLASS_VDPA,
+	.name = RTE_STR(MLX5_VDPA_DRIVER_NAME),
+	.id_table = mlx5_vdpa_pci_id_map,
+	.probe = mlx5_vdpa_dev_probe,
+        mlx5_vdpa_config_get(mkvlist, priv)
+        mlx5_vdpa_create_dev_resources
+        priv->vdev = rte_vdpa_register_device(cdev->dev, &mlx5_vdpa_ops)
+	.remove = mlx5_vdpa_dev_remove,
+};
+
+
+
+vhost-user -> vdpa, 如: 通过virtio-net的vdpa_dev_id获取到对应的vDPA设备，并调用对应的vDPA的set_features函数
+static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
+	.get_queue_num = mlx5_vdpa_get_queue_num,
+        *queue_num = priv->caps.max_num_virtio_queues / 2
+	.get_features = mlx5_vdpa_get_vdpa_features,
+        *features = MLX5_VDPA_DEFAULT_FEATURES
+	.get_protocol_features = mlx5_vdpa_get_protocol_features,
+	.dev_conf = mlx5_vdpa_dev_config,
+	.dev_close = mlx5_vdpa_dev_close,
+	.dev_cleanup = mlx5_vdpa_dev_cleanup,
+	.set_vring_state = mlx5_vdpa_set_vring_state,
+	.set_features = mlx5_vdpa_features_set,
+        if (RTE_VHOST_NEED_LOG(features))
+            rte_vhost_get_negotiated_features
+            rte_vhost_get_log_base
+            mlx5_vdpa_dirty_bitmap_set
+                mlx5_os_wrapped_mkey_create
+                mlx5_devx_cmd_modify_virtq
+            mlx5_vdpa_logging_enable
+	.migration_done = NULL,
+	.get_vfio_group_fd = NULL,
+	.get_vfio_device_fd = mlx5_vdpa_get_device_fd,
+	.get_notify_area = mlx5_vdpa_get_notify_area,
+	.get_stats_names = mlx5_vdpa_get_stats_names,
+	.get_stats = mlx5_vdpa_get_stats,
+	.reset_stats = mlx5_vdpa_reset_stats,
+};
+
+VDPA设备操作:
+struct rte_vdpa_dev_ops {
 
 
 
@@ -1416,3 +1540,274 @@ fs_tx_queue_start
 
 testpmd + pdump
 
+
+
+
+./dpdk-vhost_blk -m 1024
+
+
+
+
+rte_ctrl_thread_create
+    pthread_create(thread, attr, ctrl_thread_init, (void *)params) <- qemu connect vhost.socket
+        return start_routine(routine_arg) -> fdset_event_dispatch
+            rcb(fd, dat, &remove1) -> vhost_user_server_new_connection
+                fd = accept(fd, NULL, NULL)
+                vhost_user_add_connection(fd, vsocket)
+                    vid = vhost_new_device()
+                    vhost_setup_virtio_net
+                    vhost_attach_vdpa_device
+                    ret = vsocket->notify_ops->new_connection(vid) -> new_connection -> vhost_session_install_rte_compat_hooks
+                        rte_vhost_extern_callback_register(vid, &g_extern_vhost_ops, NULL)
+                    ret = fdset_add(&vhost_user.fdset, fd, vhost_user_read_cb, NULL, conn) -> vhost_user_read_cb
+                        vhost_user_msg_handler
+                            "read message %s\n", msg_handler->descriptionread -> message VHOST_USER_GET_FEATURES
+                            switch (request)
+                            case VHOST_USER_SET_FEATURES:
+                            case VHOST_USER_SET_PROTOCOL_FEATURES:
+                            case VHOST_USER_SET_OWNER:
+                            case VHOST_USER_SET_MEM_TABLE:
+                            case VHOST_USER_SET_LOG_BASE:
+                            case VHOST_USER_SET_LOG_FD:
+                            case VHOST_USER_SET_VRING_NUM:
+                            case VHOST_USER_SET_VRING_ADDR:
+                            case VHOST_USER_SET_VRING_BASE:
+                            case VHOST_USER_SET_VRING_KICK:
+                            case VHOST_USER_SET_VRING_CALL:
+                            case VHOST_USER_SET_VRING_ERR:
+                            case VHOST_USER_SET_VRING_ENABLE:
+                            case VHOST_USER_SEND_RARP:
+                            case VHOST_USER_NET_SET_MTU:
+                            case VHOST_USER_SET_SLAVE_REQ_FD:
+                            msg_result = (*dev->extern_ops.pre_msg_handle)(dev->vid, &ctx)
+                            msg_result = msg_handler->callback(&dev, &ctx, fd)
+                                -> vhost_user_get_features
+                                    rte_vhost_driver_get_features(dev->ifname, &features)
+                                        vdpa_dev->ops->get_features(vdpa_dev, &vdpa_features)
+                            case RTE_VHOST_MSG_RESULT_REPLY:
+                                send_vhost_reply(dev, fd, &ctx)
+                            msg_result = (*dev->extern_ops.post_msg_handle)(dev->vid, &ctx)
+                    TAILQ_INSERT_TAIL(&vsocket->conn_list, conn, next)
+
+
+
+struct rte_vhost_user_extern_ops g_extern_vhost_ops = {
+	.pre_msg_handle = extern_vhost_pre_msg_handler,
+        rte_vhost_get_ifname(vid, path, PATH_MAX)
+        ctrlr = vhost_blk_ctrlr_find(path)
+        switch ((int)msg->request)
+	.post_msg_handle = extern_vhost_post_msg_handler,
+
+};
+
+
+vhost protocol seq:
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new vhost user connection is 1319
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new device, handle is 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) negotiated Vhost-user protocol features: 0x11ebf
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_QUEUE_NUM
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_SLAVE_REQ_FD
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_OWNER
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring call idx:0 file:1321
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_ERR
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) negotiated Virtio features: 0x140000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new device status(0x00000008):
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -RESET: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -ACKNOWLEDGE: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FEATURES_OK: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER_OK: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DEVICE_NEED_RESET: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FAILED: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_INFLIGHT_FD
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd mmap_size: 2112
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd mmap_offset: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd num_queues: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd queue_size: 128
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd fd: 1322
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd pervq_inflight_size: 2112
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring call idx:0 file:1323
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) negotiated Virtio features: 0x140000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring call idx:0 file:1321
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vhost peer closed
+
+
+usage(char* progname)
+    --latencystats
+
+
+
+testpmd -> main
+    signal_handler
+    rte_log_register
+    rte_eal_init
+    Selected IOVA mode 'VA'
+    init_port
+    register_eth_event_callback
+    rte_eth_dev_callback_register(RTE_ETH_ALL, event, eth_event_callback,
+        eth_event_callback
+
+    rte_pdump_init
+        rte_memzone_reserve(MZ_RTE_PDUMP_STATS, sizeof(*pdump_stats),
+        rte_mp_action_register(PDUMP_MP, pdump_server)
+    set_def_fwd_config
+        set_default_fwd_lcores_config
+        set_def_peer_eth_addrs
+        set_default_fwd_ports_config
+            rte_eth_dev_socket_id
+    launch_args_parse
+    init_config
+        init_config_port_offloads
+        mbuf_pool_create(mbuf_data_size[j],
+        init_port_config
+
+
+examples/vhost_blk/vhost_blk.c -> main
+    rte_eal_init
+    g_vhost_ctrlr = vhost_blk_ctrlr_construct(CTRLR_NAME) -> "vhost.socket" -> /root/project/net/dpdk/build/examples/vhost.socket
+        rte_vhost_driver_register(dev_pathname, 0)
+        create_unix_socket(vsocket)
+        rte_vhost_driver_set_features(dev_pathname, VHOST_BLK_FEATURES)
+        ctrlr->bdev = vhost_blk_bdev_construct("malloc0", "vhost_blk_malloc0", 4096, 32768, 0)
+        rte_vhost_driver_callback_register(dev_pathname, &vhost_blk_device_ops)
+            vsocket->notify_ops = ops
+    rte_vhost_driver_start(dev_pathname)
+        fdset_pipe_init(&vhost_user.fdset)
+        rte_ctrl_thread_create(&fdset_tid, "vhost-events", NULL, fdset_event_dispatch, &vhost_user.fdset)
+        vhost_user_start_server(vsocket) -> bind -> listen
+            fdset_add(&vhost_user.fdset, fd, vhost_user_server_new_connection, NULL, vsocket)
+        or vhost_user_start_client(vsocket)
+
+
+
+struct rte_vhost_device_ops vhost_blk_device_ops = {
+	.new_device =  new_device,
+	.destroy_device = destroy_device,
+	.new_connection = new_connection,
+};
+
+
+
+vhost_kernel_get_features
+    vhost_kernel_ioctl(data->vhostfds[0], VHOST_GET_FEATURES, features)
+
+
+
+struct virtio_user_backend_ops virtio_ops_vdpa = {
+	.setup = vhost_vdpa_setup,
+	.destroy = vhost_vdpa_destroy,
+	.get_backend_features = vhost_vdpa_get_backend_features,
+	.set_owner = vhost_vdpa_set_owner,
+	.get_features = vhost_vdpa_get_features,
+        vhost_vdpa_ioctl(data->vhostfd, VHOST_GET_FEATURES, features) -> kernel -> .unlocked_ioctl	= vhost_vdpa_unlocked_ioctl
+	.set_features = vhost_vdpa_set_features,
+	.set_memory_table = vhost_vdpa_set_memory_table,
+	.set_vring_num = vhost_vdpa_set_vring_num,
+	.set_vring_base = vhost_vdpa_set_vring_base,
+	.get_vring_base = vhost_vdpa_get_vring_base,
+	.set_vring_call = vhost_vdpa_set_vring_call,
+	.set_vring_kick = vhost_vdpa_set_vring_kick,
+	.set_vring_addr = vhost_vdpa_set_vring_addr,
+	.get_status = vhost_vdpa_get_status,
+	.set_status = vhost_vdpa_set_status,
+	.get_config = vhost_vdpa_get_config,
+	.set_config = vhost_vdpa_set_config,
+	.enable_qp = vhost_vdpa_enable_queue_pair,
+	.dma_map = vhost_vdpa_dma_map_batch,
+	.dma_unmap = vhost_vdpa_dma_unmap_batch,
+	.update_link_state = vhost_vdpa_update_link_state,
+	.get_intr_fd = vhost_vdpa_get_intr_fd,
+};
+
+
+
+struct virtio_user_backend_ops virtio_ops_user = {
+    .setup = vhost_user_setup,
+    .destroy = vhost_user_destroy,
+    .get_backend_features = vhost_user_get_backend_features,
+    .set_owner = vhost_user_set_owner,
+    .get_features = vhost_user_get_features,
+    .set_features = vhost_user_set_features,
+    .set_memory_table = vhost_user_set_memory_table,
+    .set_vring_num = vhost_user_set_vring_num,
+    .set_vring_base = vhost_user_set_vring_base,
+    .get_vring_base = vhost_user_get_vring_base,
+    .set_vring_call = vhost_user_set_vring_call,
+    .set_vring_kick = vhost_user_set_vring_kick,
+    .set_vring_addr = vhost_user_set_vring_addr,
+    .get_status = vhost_user_get_status,
+    .set_status = vhost_user_set_status,
+    .enable_qp = vhost_user_enable_queue_pair,
+    .update_link_state = vhost_user_update_link_state,
+    .server_disconnect = vhost_user_server_disconnect,
+    .server_reconnect = vhost_user_server_reconnect,
+    .get_intr_fd = vhost_user_get_intr_fd,
+};
+
+
+
+dpdk/drivers/net/virtio/virtio_user_ethdev.c
+RTE_PMD_REGISTER_VDEV(net_virtio_user, virtio_user_driver);
+static struct rte_vdev_driver virtio_user_driver = {
+	.probe = virtio_user_pmd_probe,
+	.remove = virtio_user_pmd_remove,
+	.dma_map = virtio_user_pmd_dma_map,
+	.dma_unmap = virtio_user_pmd_dma_unmap,
+};
+virtio_user_pmd_probe
+    virtio_user_dev_setup
+        switch (dev->backend_type)
+        case VIRTIO_USER_BACKEND_VHOST_USER:
+            dev->ops = &virtio_ops_user
+        case VIRTIO_USER_BACKEND_VHOST_KERNEL
+            dev->ops = &virtio_ops_kernel
+        case VIRTIO_USER_BACKEND_VHOST_VDPA:
+            dev->ops = &virtio_ops_vdpa
+        dev->ops->setup(dev)
+        virtio_user_dev_init_notify
+        virtio_user_fill_intr_handle
+    virtio_user_dev_init
+        dev->ops->get_features(dev, &dev->device_features)
+
+
+struct virtio_user_backend_ops virtio_ops_kernel = {
+	.setup = vhost_kernel_setup,
+	.destroy = vhost_kernel_destroy,
+	.get_backend_features = vhost_kernel_get_backend_features,
+	.set_owner = vhost_kernel_set_owner,
+	.get_features = vhost_kernel_get_features,
+	.set_features = vhost_kernel_set_features,
+	.set_memory_table = vhost_kernel_set_memory_table,
+	.set_vring_num = vhost_kernel_set_vring_num,
+	.set_vring_base = vhost_kernel_set_vring_base,
+	.get_vring_base = vhost_kernel_get_vring_base,
+	.set_vring_call = vhost_kernel_set_vring_call,
+	.set_vring_kick = vhost_kernel_set_vring_kick,
+	.set_vring_addr = vhost_kernel_set_vring_addr,
+	.get_status = vhost_kernel_get_status,
+	.set_status = vhost_kernel_set_status,
+	.enable_qp = vhost_kernel_enable_queue_pair,
+	.update_link_state = vhost_kernel_update_link_state,
+	.get_intr_fd = vhost_kernel_get_intr_fd,
+};
+
+
+vhost_kernel_set_memory_table
+    vhost_kernel_ioctl(data->vhostfds[i], VHOST_SET_MEM_TABLE, vm)
+
+
+virtio_user_set_status
+    virtio_user_start_device
+        dev->ops->set_memory_table(dev)
