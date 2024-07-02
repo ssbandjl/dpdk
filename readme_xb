@@ -918,6 +918,9 @@ dpdk/examples/vdpa/main.c
 
 static const struct rte_vhost_device_ops vdpa_sample_devops = {
 	.new_device = new_device,
+        rte_vhost_get_ifname(vid, ifname, sizeof(ifname))
+        dev = rte_vdpa_get_rte_device(vports[i].dev)
+            return vdpa_dev->device
 	.destroy_device = destroy_device,
 };
 
@@ -954,6 +957,8 @@ static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.get_protocol_features = mlx5_vdpa_get_protocol_features,
 	.dev_conf = mlx5_vdpa_dev_config,
 	.dev_close = mlx5_vdpa_dev_close,
+        rte_ring_enqueue_bulk_elem_start -> 开始将几个对象放入环中。请注意，此函数不会将任何实际对象放入队列中，它只是为用户保留了这种能力。用户必须调用适当的 enqueue_elem_finish() 将对象复制到队列中并完成给定的入队操作
+        rte_ring_enqueue_elem_finish(r, obj, sizeof(struct mlx5_vdpa_task), n) -> 完成将多个对象加入环中。请注意，加入队列的对象数量不应超过先前 enqueue_start 返回的值。
 	.dev_cleanup = mlx5_vdpa_dev_cleanup,
 	.set_vring_state = mlx5_vdpa_set_vring_state,
 	.set_features = mlx5_vdpa_features_set,
@@ -1714,6 +1719,12 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
         vhost_vdpa_ioctl(data->vhostfd, VHOST_GET_FEATURES, features) -> kernel -> .unlocked_ioctl	= vhost_vdpa_unlocked_ioctl
 	.set_features = vhost_vdpa_set_features,
 	.set_memory_table = vhost_vdpa_set_memory_table,
+        vhost_vdpa_iotlb_batch_begin
+        vhost_vdpa_dma_unmap
+        rte_memseg_contig_walk_thread_unsafe(vhost_vdpa_map_contig, dev)
+            vhost_vdpa_dma_map(dev, ms->addr, ms->iova, len)
+        rte_memseg_walk_thread_unsafe(vhost_vdpa_map, dev)
+        vhost_vdpa_iotlb_batch_end
 	.set_vring_num = vhost_vdpa_set_vring_num,
 	.set_vring_base = vhost_vdpa_set_vring_base,
 	.get_vring_base = vhost_vdpa_get_vring_base,
@@ -1741,12 +1752,70 @@ struct virtio_user_backend_ops virtio_ops_user = {
     .get_features = vhost_user_get_features,
     .set_features = vhost_user_set_features,
     .set_memory_table = vhost_user_set_memory_table,
+        .request = VHOST_USER_SET_MEM_TABLE
+        rte_memseg_walk_thread_unsafe(update_memory_region, &wa) -> 此函数不执行任何锁定，并且只能在与内存相关的回调函数中安全调用
+            mr->guest_phys_addr = start_addr;
+            mr->userspace_addr = start_addr;
+            mr->memory_size = ms->len;
+            mr->mmap_offset = offset;
+        vhost_user_write(data->vhostfd, &msg, fds, fd_num)
     .set_vring_num = vhost_user_set_vring_num,
-    .set_vring_base = vhost_user_set_vring_base,
-    .get_vring_base = vhost_user_get_vring_base,
+    .set_vring_base = vhost_user_set_vring_base, -> virtio device sends us the available ring last used index
+        vq->last_avail_idx = val & 0x7fff
+    .get_vring_base = vhost_user_get_vring_base, -> when virtio is stopped, qemu will send us the GET_VRING_BASE message
+        vhost_destroy_device_notify(dev)
+            vdpa_dev->ops->dev_close(dev->vid)
+        vhost_user_iotlb_flush_all(vq) -> vhost：在 vring 停止时清理 IOTLB 缓存，当 VM 中的 virtio 驱动程序发生更改时，会留下旧的 IOVA 缓存条目。如果所有这些旧条目的 iova 地址都小于新的 iova 条目，则 vhost 代码将需要迭代所有缓存以查找新条目。如果新转换只需要一个新的 iova 条目，这种情况将永远持续下去。在 virtio-net 到 testpmd 的 vfio-pci 驱动程序转换中已经观察到这种情况，如果大页面地址高于网络缓冲区，则性能会从超过 10Mpps 降低到不到 0.07Mpps。由于所有新缓冲区都包含在这个新的巨型页面中，因此 vhost 最坏情况下需要为每个转换扫描 IOTLB_CACHE_SIZE - 1
+            vhost_user_iotlb_cache_remove_all
+                for
+                    TAILQ_REMOVE(&vq->iotlb_list, node, next)
+                    vhost_user_iotlb_pool_put(vq, node)
+                        SLIST_INSERT_HEAD(&vq->iotlb_free_list, node, next_free)
+            vhost_user_iotlb_pending_remove_all
+        vring_invalidate(dev, vq)
+            vq->access_ok = false;
+            vq->desc = NULL;
+            vq->avail = NULL;
+            vq->used = NULL;
+            vq->log_guest_addr = 0;
     .set_vring_call = vhost_user_set_vring_call,
+        vq = dev->virtqueue[file.index]
+        vq->callfd = file.fd
     .set_vring_kick = vhost_user_set_vring_kick,
-    .set_vring_addr = vhost_user_set_vring_addr,
+        vq = dev->virtqueue[file.index]
+        translate_ring_addresses(&dev, &vq)
+        vq->kickfd = file.fd
+        vhost_check_queue_inflights_packed
+            resubmit = rte_zmalloc_socket("resubmit", sizeof(struct rte_vhost_resubmit_info), 0, vq->numa_node)
+    .set_vring_addr = vhost_user_set_vring_addr, -> virtio 设备向我们发送 desc、used 和 avail 环地址。然后此函数将它们转换为我们的地址空间
+        struct vhost_vring_addr *addr = &ctx->msg.payload.addr
+        vq = dev->virtqueue[ctx->msg.payload.addr.index]
+        memcpy(&vq->ring_addrs, addr, sizeof(*addr))
+        vring_invalidate
+        translate_ring_addresses(&dev, &vq)
+            if (vq->ring_addrs.flags & (1 << VHOST_VRING_F_LOG))
+                vq->log_guest_addr = log_addr_to_gpa(dev, vq)
+            if (vq_is_packed(dev))
+                vq->desc_packed = (struct vring_packed_desc *)(uintptr_t)ring_addr_to_vva(dev, vq, vq->ring_addrs.desc_user_addr, &len) -> 将环地址转换为 Vhost 虚拟地址。如果启用了 IOMMU，则环地址为客户机 IO 虚拟地址，否则为 QEMU 虚拟地址
+                    if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+                        vhost_iova_to_vva(dev, vq, ra, size, VHOST_ACCESS_RW) -> vhost：确保在转换 QVA 时映射所有范围，此补丁确保在将地址从主地址（例如 QEMU 主机地址）转换为进程 VA 时映射所有地址范围
+                            rte_vhost_va_from_guest_pa(dev->mem, iova, len) -> Convert guest physical address to host virtual address
+                            or __vhost_iova_to_vva(dev, vq, iova, len, perm)
+                                vva = vhost_user_iotlb_cache_find(vq, iova, &tmp_size, perm)
+                                    TAILQ_FOREACH(node, &vq->iotlb_list, next)
+                                if (!vhost_user_iotlb_pending_miss(vq, iova, perm))
+                                    vhost_user_iotlb_pending_insert
+                                        node = vhost_user_iotlb_pool_get(vq)
+                                            node = SLIST_FIRST(&vq->iotlb_free_list)
+                                            SLIST_REMOVE_HEAD(&vq->iotlb_free_list, next_free)
+                                        TAILQ_INSERT_TAIL(&vq->iotlb_pending_list, node, next)
+                                    vhost_user_iotlb_miss
+                                        .request.slave = VHOST_USER_SLAVE_IOTLB_MSG
+                                        send_vhost_message(dev, dev->slave_req_fd, &ctx)
+                                            send_fd_message(dev->ifname, sockfd, (char *)&ctx->msg, VHOST_USER_HDR_SIZE + ctx->msg.size, ctx->fds, ctx->fd_num)
+                    qva_to_vva(dev, ra, size) ->  Converts QEMU virtual address to Vhost virtual address
+                        for (i = 0; i < dev->mem->nregions; i++)
+                numa_realloc(&dev, &vq) -> vhost：保留对 virtqueue 索引的引用，在 dev->virtqueue[] 数组中拥有对 vq 索引的反向引用，可以统一内部 API，只需传递 dev 和 vq。它还允许在日志消息中显示 vq 索引。删除不需要的 virtqueue 索引检查（例如在所有可用 virtqueue 上循环调用的静态帮助程序）。尽快移动 virtqueue 索引有效性检查
     .get_status = vhost_user_get_status,
     .set_status = vhost_user_set_status,
     .enable_qp = vhost_user_enable_queue_pair,
@@ -1811,3 +1880,201 @@ vhost_kernel_set_memory_table
 virtio_user_set_status
     virtio_user_start_device
         dev->ops->set_memory_table(dev)
+
+
+#define VHOST_MESSAGE_HANDLERS \
+VHOST_MESSAGE_HANDLER(VHOST_USER_NONE, NULL, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_FEATURES, vhost_user_get_features, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_FEATURES, vhost_user_set_features, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_OWNER, vhost_user_set_owner, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_RESET_OWNER, vhost_user_reset_owner, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_MEM_TABLE, vhost_user_set_mem_table, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_LOG_BASE, vhost_user_set_log_base, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_LOG_FD, vhost_user_set_log_fd, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_NUM, vhost_user_set_vring_num, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ADDR, vhost_user_set_vring_addr, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_BASE, vhost_user_set_vring_base, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_VRING_BASE, vhost_user_get_vring_base, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_KICK, vhost_user_set_vring_kick, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_CALL, vhost_user_set_vring_call, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ERR, vhost_user_set_vring_err, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_PROTOCOL_FEATURES, vhost_user_get_protocol_features, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_PROTOCOL_FEATURES, vhost_user_set_protocol_features, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_QUEUE_NUM, vhost_user_get_queue_num, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENABLE, vhost_user_set_vring_enable, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SEND_RARP, vhost_user_send_rarp, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_NET_SET_MTU, vhost_user_net_set_mtu, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_SLAVE_REQ_FD, vhost_user_set_req_fd, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_IOTLB_MSG, vhost_user_iotlb_msg, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_CONFIG, vhost_user_get_config, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_CONFIG, vhost_user_set_config, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_ADVISE, vhost_user_set_postcopy_advise, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_LISTEN, vhost_user_set_postcopy_listen, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_END, vhost_user_postcopy_end, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_INFLIGHT_FD, vhost_user_get_inflight_fd, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_INFLIGHT_FD, vhost_user_set_inflight_fd, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_STATUS, vhost_user_set_status, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_STATUS, vhost_user_get_status, false)
+
+
+vhost_user_set_mem_table(struct virtio_net **pdev, struct vhu_msg_context *ctx, int main_fd)
+    vhost_memory_changed(memory, dev->mem)
+    dev->notify_ops->vring_state_changed(dev->vid, i, 0) -> stop dma
+        vring_conf_update(vid, eth_dev, vring)
+        update_queuing_status(eth_dev, false)
+        rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_QUEUE_STATE, NULL)
+    vhost_user_iotlb_flush_all(dev->virtqueue[i])
+    dev->guest_pages = rte_zmalloc_socket(NULL, dev->max_guest_pages *sizeof(struct guest_page), RTE_CACHE_LINE_SIZE, numa_node)
+    dev->mem = rte_zmalloc_socket("vhost-mem-table", sizeof(struct rte_vhost_memory) + sizeof(struct rte_vhost_mem_region) * memory->nregions, 0, numa_node)
+    for (i = 0; i < memory->nregions; i++)
+        reg->guest_phys_addr = memory->regions[i].guest_phys_addr
+        reg->guest_user_addr = memory->regions[i].userspace_addr;
+        reg->size            = memory->regions[i].memory_size;
+        reg->fd              = ctx->fds[i];
+        mmap_offset = memory->regions[i].mmap_offset
+        vhost_user_mmap_region(dev, reg, mmap_offset)
+    async_dma_map(dev, true)
+    vhost_user_postcopy_register(dev, main_fd, ctx)
+    for (i = 0; i < dev->nr_vring; i++)
+        vring_invalidate(dev, vq)
+        translate_ring_addresses(&dev, &vq)
+        dev->notify_ops->vring_state_changed(dev->vid, i, 1)
+
+
+
+xilinx, librte_pmd_sfc_vdpa, sfc_efx, ef100 设备可以配置为网络设备或 vDPA 模式。添加“class=vdpa”参数有助于指定此设备将在 vDPA 模式下使用。如果未指定此参数，设备将由 net/sfc 驱动程序探测并用作网络设备, 该 PMD 使用 libefx（common/sfc_efx）代码来访问设备固件 -> AMD 现已收购 Solarflare，可提供 XtremeScale 系列网络接口控制器 -> commit: https://github.com/ssbandjl/dpdk/commit/5e7596ba7cb3b1f07a605edf6c816d355e84dc26
+SFC: Solarflare Communications
+RTE_INIT(sfc_efx_register_logtype)
+
+RTE_PMD_REGISTER_PCI(net_sfc_vdpa, rte_sfc_vdpa)
+sfc_vdpa_pci_probe
+    logtype_main = sfc_vdpa_register_logtype(&pci_dev->addr, SFC_VDPA_LOGTYPE_MAIN_STR, RTE_LOG_NOTICE)
+    sfc_vdpa_set_log_prefix(sva)
+        snprintf(sva->log_prefix, sizeof(sva->log_prefix),"PMD: sfc_vdpa " PCI_PRI_FMT " : ",pci_dev->addr.domain, pci_dev->addr.bus, pci_dev->addr.devid, pci_dev->addr.function)
+    sfc_vdpa_kvargs_parse(sva)
+        sva->kvargs = rte_kvargs_parse(devargs->args, params)
+    sfc_vdpa_adapter_lock_init(sva)
+    sfc_vdpa_vfio_setup(sva)
+        sva->vfio_container_fd = rte_vfio_container_create()
+            vfio_cfgs[i].vfio_container_fd = rte_vfio_get_container_fd()
+                vfio_container_fd = open(VFIO_CONTAINER_PATH, O_RDWR) -> /dev/vfio/vfio
+        rte_vfio_get_group_num(rte_pci_get_sysfs_path(), dev_name, &sva->iommu_group_num)
+            snprintf(linkname, sizeof(linkname), "%s/%s/iommu_group", sysfs_base, dev_addr)
+        sva->vfio_group_fd = rte_vfio_container_group_bind(sva->vfio_container_fd, sva->iommu_group_num)
+            vfio_cfg = get_vfio_cfg_by_container_fd(container_fd)
+            vfio_get_group_fd(vfio_cfg, iommu_group_num)
+                vfio_group_fd = vfio_open_group_fd(iommu_group_num) -> /dev/vfio/%u
+                    rte_mp_request_sync(&mp_req, &mp_reply, &ts) -> vfio：使用通用多进程通道，以前，vfio 使用自己的私有通道供次进程从主进程获取容器 fd 和组 fd。此补丁更改为使用通用 mp 通道 -> 向对等进程发送请求并等待回复。此函数向对等进程发送请求消息，并将阻塞直到收到对等进程的回复消息。
+        rte_pci_map_device(dev) -> 映射PCI设备BAR资源
+        sva->vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle)
+    sfc_vdpa_hw_init
+        sfc_efx_family(sva->pdev, &mem_ebr, &sva->family)
+            static const efx_pci_ops_t ops = {
+                .epo_config_readd = sfc_efx_pci_config_readd, -> rte_pci_read_config
+                .epo_find_mem_bar = sfc_efx_find_mem_bar,
+            };
+            efx_family_probe_bar(pci_dev->id.vendor_id, pci_dev->id.device_id, &espcp, &ops, family, mem_ebrp)
+                case EFX_PCI_DEVID_RIVERHEAD_VF
+                    rhead_pci_nic_membar_lookup
+                        efx_pci_find_next_xilinx_cap_table -> epo_config_readd
+                        rhead_xilinx_cap_tbl_find_ef100_locator
+                            rhead_nic_xilinx_cap_tbl_read_ef100_locator
+                        epo_find_mem_bar -> sfc_efx_find_mem_bar
+                efx_family(venid, devid, efp, &membar)
+        sfc_vdpa_mem_bar_init(sva, &mem_ebr)
+        efx_nic_create(sva->family, (efsys_identifier_t *)sva, &sva->mem_bar, mem_ebr.ebr_offset, &sva->nic_lock, &enp)
+            case EFX_FAMILY_MEDFORD
+                enp->en_enop = &__efx_nic_medford_ops
+            case EFX_FAMILY_MEDFORD2
+                enp->en_enop = &__efx_nic_medford2_ops
+            case EFX_FAMILY_RIVERHEAD
+                enp->en_enop = &__efx_nic_riverhead_ops
+        sfc_vdpa_mcdi_init(sva)
+            sfc_efx_mcdi_init(&sva->mcdi, logtype,sva->log_prefix, sva->nic, &sfc_vdpa_mcdi_ops, sva)
+        sfc_vdpa_nic_probe(sva)
+            efx_phy_probe
+                epop = &__efx_phy_ef10_ops
+        efx_nic_reset(enp)
+        efx_virtio_init(enp)
+            evop = &__efx_virtio_rhead_ops
+        sfc_vdpa_estimate_resource_limits(sva)
+        efx_filter_init(enp)
+    sva->ops_data = sfc_vdpa_device_init(sva, SFC_VDPA_AS_VF)
+        ops_data->vdpa_dev = rte_vdpa_register_device(&pci_dev->device, &sfc_vdpa_ops)
+    TAILQ_INSERT_TAIL(&sfc_vdpa_adapter_list, sva, next)
+
+
+static struct rte_vdpa_dev_ops sfc_vdpa_ops = {
+	.get_queue_num = sfc_vdpa_get_queue_num,
+	.get_features = sfc_vdpa_get_features,
+	.get_protocol_features = sfc_vdpa_get_protocol_features,
+	.dev_conf = sfc_vdpa_dev_config,
+	.dev_close = sfc_vdpa_dev_close,
+	.set_vring_state = sfc_vdpa_set_vring_state,
+	.set_features = sfc_vdpa_set_features,
+	.get_vfio_device_fd = sfc_vdpa_get_vfio_device_fd,
+	.get_notify_area = sfc_vdpa_get_notify_area,
+        *offset = reg.offset + (uint64_t)ops_data->vq_cxt[qid].doorbell
+        doorbell = (uint8_t *)pci_dev->mem_resource[reg.index].addr + *offset
+        rte_write16(qid, doorbell) -> VM 中的 virtio-net 驱动程序在 vDPA 有机会设置队列和通知区域之前发送队列通知，因此 HW 错过了这些门铃通知。由于发送重复门铃是安全的，因此从 vDPA 驱动程序发送另一个门铃作为解决此时间问题的解决方法
+};
+
+
+static const efx_virtio_ops_t	__efx_virtio_rhead_ops = {
+	rhead_virtio_qstart,			/* evo_virtio_qstart */
+	rhead_virtio_qstop,			/* evo_virtio_qstop */
+	rhead_virtio_get_doorbell_offset,	/* evo_get_doorbell_offset */
+	rhead_virtio_get_features,		/* evo_get_features */
+	rhead_virtio_verify_features,		/* evo_verify_features */
+};
+
+static const efx_phy_ops_t	__efx_phy_ef10_ops = {
+	ef10_phy_power,			/* epo_power */
+	NULL,				/* epo_reset */
+	ef10_phy_reconfigure,		/* epo_reconfigure */
+	ef10_phy_verify,		/* epo_verify */
+	ef10_phy_oui_get,		/* epo_oui_get */
+	ef10_phy_link_state_get,	/* epo_link_state_get */
+#if EFSYS_OPT_PHY_STATS
+	ef10_phy_stats_update,		/* epo_stats_update */
+#endif	/* EFSYS_OPT_PHY_STATS */
+#if EFSYS_OPT_BIST
+	ef10_bist_enable_offline,	/* epo_bist_enable_offline */
+	ef10_bist_start,		/* epo_bist_start */
+	ef10_bist_poll,			/* epo_bist_poll */
+	ef10_bist_stop,			/* epo_bist_stop */
+#endif	/* EFSYS_OPT_BIST */
+};
+
+
+
+static const struct sfc_efx_mcdi_ops sfc_vdpa_mcdi_ops = {
+	.dma_alloc	= sfc_vdpa_mcdi_dma_alloc,
+        mz = rte_memzone_reserve_aligned(mz_name, mcdi_buff_size, numa_node, RTE_MEMZONE_IOVA_CONTIG, PAGE_SIZE)
+        rte_vfio_container_dma_map(sva->vfio_container_fd, (uint64_t)mz->addr, mcdi_iova, mcdi_buff_size)
+	.dma_free	= sfc_vdpa_mcdi_dma_free,
+	.sched_restart  = sfc_vdpa_mcdi_sched_restart,
+	.mgmt_evq_poll  = sfc_vdpa_mcdi_mgmt_evq_poll,
+};
+
+static const efx_nic_ops_t	__efx_nic_medford_ops = {
+	ef10_nic_probe,			/* eno_probe */
+	medford_board_cfg,		/* eno_board_cfg */
+	ef10_nic_set_drv_limits,	/* eno_set_drv_limits */
+	ef10_nic_reset,			/* eno_reset */
+	ef10_nic_init,			/* eno_init */
+	ef10_nic_get_vi_pool,		/* eno_get_vi_pool */
+	ef10_nic_get_bar_region,	/* eno_get_bar_region */
+	ef10_nic_hw_unavailable,	/* eno_hw_unavailable */
+	ef10_nic_set_hw_unavailable,	/* eno_set_hw_unavailable */
+#if EFSYS_OPT_DIAG
+	ef10_nic_register_test,		/* eno_register_test */
+#endif	/* EFSYS_OPT_DIAG */
+	ef10_nic_fini,			/* eno_fini */
+	ef10_nic_unprobe,		/* eno_unprobe */
+};
+
+
+shm, rte_eth_dev_attach_secondary
+rte_eth_dev_pci_allocate
+
