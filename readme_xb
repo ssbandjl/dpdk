@@ -905,24 +905,45 @@ or
 ./dpdk-vdpa -c 0x2 -n 4 --socket-mem 1024,1024 -w 0000:06:00.3,vdpa=1 -w 0000:06:00.4,vdpa=1
 
 dpdk/examples/vdpa/main.c
+    ret = rte_eal_init(argc, argv)
     cl = cmdline_stdin_new(main_ctx, "vdpa> ")
     cmdline_interact(cl)
+        cmdline_read_char
+        cmdline_in
+            rdline_add_history(&cl->rdl, buffer)
+                cirbuf_add_buf_tail(&rdl->history, buf, len) -> vhost_user_msg_handler
+                cirbuf_add_tail(&rdl->history, 0)
     or start_vdpa(&vports[devcnt])
         rte_vhost_driver_register(socket_path, vport->flags)
         rte_vhost_driver_callback_register(socket_path,	&vdpa_sample_devops)
         rte_vhost_driver_attach_vdpa_device(socket_path, vport->dev)
             vsocket->vdpa_dev = dev -> 将vDPA的deviceid记录在vsocket结构中，这样就将vhost和vDPA设备关联起来
         rte_vhost_driver_get_vdpa_dev_type
-        vdpa_blk_device_set_features_and_protocol
-        rte_vhost_driver_start
+        RTE_VHOST_VDPA_DEVICE_TYPE_BLK
+            vdpa_blk_device_set_features_and_protocol
+                rte_vhost_driver_set_features(path, VHOST_BLK_FEATURES)
+                rte_vhost_driver_disable_features
+                rte_vhost_driver_get_protocol_features
+                    vdpa_dev->ops->get_protocol_features
+                rte_vhost_driver_set_protocol_features
+                    vsocket->protocol_features = protocol_features
+        rte_vhost_driver_start(socket_path)
 
 static const struct rte_vhost_device_ops vdpa_sample_devops = {
-	.new_device = new_device,
         rte_vhost_get_ifname(vid, ifname, sizeof(ifname))
+	.new_device = new_device,
         dev = rte_vdpa_get_rte_device(vports[i].dev)
             return vdpa_dev->device
 	.destroy_device = destroy_device,
 };
+
+
+vdpa> list
+device id       device address  queue num       supported features
+0               0000:06:00.3    1               0x14c238020
+1               0000:06:00.4    1               0x14c238020
+2               0000:06:00.5    1               0x14c238020
+vdpa> create /tmp/vdpa-socket0 0000:06:00.3
 
 
 -w
@@ -955,6 +976,7 @@ static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.get_features = mlx5_vdpa_get_vdpa_features,
         *features = MLX5_VDPA_DEFAULT_FEATURES
 	.get_protocol_features = mlx5_vdpa_get_protocol_features,
+        *features = MLX5_VDPA_PROTOCOL_FEATURES
 	.dev_conf = mlx5_vdpa_dev_config,
 	.dev_close = mlx5_vdpa_dev_close,
         rte_ring_enqueue_bulk_elem_start -> 开始将几个对象放入环中。请注意，此函数不会将任何实际对象放入队列中，它只是为用户保留了这种能力。用户必须调用适当的 enqueue_elem_finish() 将对象复制到队列中并完成给定的入队操作
@@ -1592,6 +1614,7 @@ rte_ctrl_thread_create
                             case RTE_VHOST_MSG_RESULT_REPLY:
                                 send_vhost_reply(dev, fd, &ctx)
                             msg_result = (*dev->extern_ops.post_msg_handle)(dev->vid, &ctx)
+                            if (dev->notify_ops->new_device(dev->vid) -> config vdpa device -> vdpa new device
                     TAILQ_INSERT_TAIL(&vsocket->conn_list, conn, next)
 
 
@@ -2078,3 +2101,10 @@ static const efx_nic_ops_t	__efx_nic_medford_ops = {
 shm, rte_eth_dev_attach_secondary
 rte_eth_dev_pci_allocate
 
+
+
+
+cmdline_parse_inst_t cmd_create_vdpa_port
+    cmd_create_vdpa_port_parsed
+        dev = rte_vdpa_find_device_by_name(res->bdf)
+        start_vdpa(&vports[devcnt]
