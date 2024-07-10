@@ -735,6 +735,13 @@ pci_probe(void)
                             mlx5_kvargs_prepare
                             parse_class_options
                             mlx5_common_dev_create
+                                mlx5_malloc_mem_select
+                                mlx5_dev_hw_global_prepare
+                                mlx5_mr_create_cache
+                                rte_mem_event_callback_register("MLX5_MEM_EVENT_CB", mlx5_mr_mem_event_cb, NULL)
+                                    case RTE_MEM_EVENT_FREE
+                                        TAILQ_FOREACH(cdev, &devices_list, next)
+			                                mlx5_free_mr_by_addr(&cdev->mr_scache, mlx5_os_get_ctx_device_name(cdev->ctx), addr, len)
                             is_valid_class_combination
                             drivers_probe
                                 ...
@@ -955,14 +962,119 @@ RTE_INIT(rte_mlx5_vdpa_init)
             setenv("MLX5_DEVICE_FATAL_CLEANUP", "1", 1)
         mlx5_common_driver_init
             mlx5_common_pci_init
+            #ifdef RTE_EXEC_ENV_LINUX
+                mlx5_common_auxiliary_init()
+                    rte_auxiliary_register(&mlx5_auxiliary_driver)
     mlx5_class_driver_register(&mlx5_vdpa_driver)
 static struct mlx5_class_driver mlx5_vdpa_driver = {
 	.drv_class = MLX5_CLASS_VDPA,
 	.name = RTE_STR(MLX5_VDPA_DRIVER_NAME),
 	.id_table = mlx5_vdpa_pci_id_map,
 	.probe = mlx5_vdpa_dev_probe,
+        priv = rte_zmalloc("mlx5 vDPA device private", sizeof(*priv) + sizeof(struct mlx5_vdpa_virtq) *attr->vdpa.max_num_virtio_queues, RTE_CACHE_LINE_SIZE)
         mlx5_vdpa_config_get(mkvlist, priv)
+            const char **params = (const char *[]){
+                "event_core",
+                "event_mode",
+                "event_us",
+                "hw_latency_mode",
+                "hw_max_latency_us",
+                "hw_max_pending_comp",
+                "no_traffic_time",
+                "queue_size",
+                "queues",
+                "max_conf_threads",
+                NULL,
+            };
+            mlx5_kvargs_process(mkvlist, params, mlx5_vdpa_args_check_handler, priv)
         mlx5_vdpa_create_dev_resources
+            priv->var = mlx5_glue->dv_alloc_var(ctx, 0)
+            priv->virtq_db_addr = mmap(NULL, priv->var->length, PROT_READ | PROT_WRITE, MAP_SHARED, ctx->cmd_fd, priv->var->mmap_off)
+            priv->virtq_db_addr = (char *)priv->virtq_db_addr + ((rte_mem_page_size() - 1) & priv->caps.doorbell_bar_offset)
+            priv->td = mlx5_devx_cmd_create_td(ctx)
+            priv->tiss[i] = mlx5_devx_cmd_create_tis(ctx, &tis_attr) -> Create TIS using DevX API
+                opcode, MLX5_CMD_OP_CREATE_TIS
+            priv->null_mr = mlx5_glue->alloc_null_mr(priv->cdev->pd)
+            priv->steer.domain = mlx5_glue->dr_create_domain(ctx, MLX5DV_DR_DOMAIN_TYPE_NIC_RX)
+            priv->steer.tbl = mlx5_glue->dr_create_flow_tbl(priv->steer.domain, 0)
+            mlx5_vdpa_err_event_setup
+                priv->err_chnl = mlx5_glue->devx_create_event_channel(priv->cdev->ctx, 0)
+                fcntl(priv->err_chnl->fd, F_SETFL, flags | O_NONBLOCK)
+                priv->err_intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED)
+                 rte_intr_callback_register(priv->err_intr_handle, mlx5_vdpa_err_interrupt_handler, priv)
+                    mlx5_vdpa_virtq_query(priv, vq_index)
+                        mlx5_devx_cmd_query_virtq(virtq->virtq, &attr) -> MLX5_CMD_OP_QUERY_GENERAL_OBJECT
+                        rte_vhost_set_vring_base(priv->vid, index, attr.hw_available_index, attr.hw_used_index)
+                            if (vq_is_packed(dev)) {
+                                vq->last_avail_idx = last_avail_idx & 0x7fff;
+                                vq->avail_wrap_counter = !!(last_avail_idx & (1 << 15));
+                                vq->last_used_idx = last_used_idx & 0x7fff;
+                                vq->used_wrap_counter = !!(last_used_idx & (1 << 15));
+                            } else {
+                                vq->last_avail_idx = last_avail_idx;
+                                vq->last_used_idx = last_used_idx;
+                            }
+                    mlx5_vdpa_virtq_enable(priv, vq_index, 0) ->  Disable vq
+                        if (virtq->enable == !!enable) -> same status
+                            mlx5_vdpa_virtq_is_modified(priv, virtq)
+                            mlx5_vdpa_steer_update(priv, false)
+                        else mlx5_vdpa_is_pre_created_vq_mismatch(priv, virtq)
+                        if (enable)
+                            mlx5_vdpa_virtq_setup(priv, index, true)
+                                rte_vhost_get_vhost_vring(priv->vid, index, &vq)
+                                mlx5_vdpa_virtq_sub_objs_prepare(priv, &attr, &vq, index, false)
+                                virtq->virtq = mlx5_devx_cmd_create_virtq(priv->cdev->ctx, &attr) -> MLX5_CMD_OP_CREATE_GENERAL_OBJECT
+                                mlx5_devx_cmd_modify_virtq(virtq->virtq, &attr) -> MLX5_CMD_OP_MODIFY_GENERAL_OBJECT
+                                claim_zero(rte_vhost_enable_guest_notification(priv->vid, index, 1))
+                                    vq = dev->virtqueue[queue_id]
+                                    vhost_enable_guest_notification
+                                        vhost_enable_notify_packed
+                                            flags = VRING_EVENT_F_ENABLE
+                                        or vhost_enable_notify_split
+                                mlx5_vdpa_virtq_doorbell_setup(virtq, &vq, index) -> Setup doorbell mapping
+                                    virtq->intr_handle = mlx5_os_interrupt_handler_create(RTE_INTR_INSTANCE_F_SHARED, false,vq->kickfd, mlx5_vdpa_virtq_kick_handler, virtq)
+                                        mlx5_vdpa_virtq_kick_handler
+                                            rte_intr_fd_get(virtq->intr_handle)
+                                            rte_write32(virtq->index, priv->virtq_db_addr)
+                                            rte_vhost_host_notifier_ctrl(priv->vid, virtq->index, true)
+                                Subscribe virtq error event
+                                mlx5_glue->devx_subscribe_devx_event(priv->err_chnl, virtq->virtq->obj,sizeof(event_num), &event_num, cookie)
+                                eventfd_write(virtq->eqp.cq.callfd, (eventfd_t)1) -> Initial notification to ask Qemu handling completed buffers
+                            mlx5_vdpa_steer_update(priv, false)
+                                mlx5_vdpa_rqt_prepare
+                                    priv->steer.rqt = mlx5_devx_cmd_create_rqt(priv->cdev->ctx,attr) -> MLX5_CMD_OP_CREATE_RQT
+                                    else mlx5_devx_cmd_modify_rqt(priv->steer.rqt, attr) -> MLX5_CMD_OP_MODIFY_RQT
+                                mlx5_vdpa_rss_flows_create
+                                    dv_create_flow_matcher
+                                    dv_create_flow
+                    mlx5_vdpa_virtq_enable(priv, vq_index, 1) -> enable vq
+            mlx5_vdpa_event_qp_global_prepare
+                mlx5_os_devx_create_event_channel
+                mlx5_devx_uar_prepare
+                    const size_t page_size = rte_mem_page_size()
+                    uar_obj = mlx5_devx_alloc_uar(cdev)
+                    uar_mmap_offset = mlx5_os_get_devx_uar_mmap_offset(uar_obj);
+                    base_addr = mlx5_os_get_devx_uar_base_addr(uar_obj);
+                    uar->dbnc = mlx5_db_map_type_get(uar_mmap_offset, page_size);
+                    uar->bf_db.db = mlx5_os_get_devx_uar_reg_addr(uar_obj);
+            mlx5_vdpa_virtq_resource_prepare
+                (mlx5_vdpa_task_add(priv, thrd_idx, MLX5_VDPA_TASK_PREPARE_VIRTQ, &remaining_cnt, &err_cnt, (void **)&data, 1)
+                    mlx5_vdpa_c_thrd_ring_enqueue_bulk
+                        rte_ring_enqueue_bulk_elem_start(r, n, free)
+                        rte_ring_enqueue_elem_finish(r, obj, sizeof(struct mlx5_vdpa_task), n)
+                mlx5_vdpa_virtq_single_resource_prepare(priv, main_task_idx[index])
+                    mlx5_vdpa_virtq_sub_objs_prepare
+                        mlx5_vdpa_event_qp_prepare
+                        (mlx5_vdpa_cq_create(priv, log_desc_n, callfd, virtq) || !eqp->cq.cq_obj.cq)
+                        mlx5_ts_format_conv
+                        mlx5_devx_cmd_create_qp
+                        mlx5_os_get_devx_uar_page_id
+                        mlx5_devx_qp_create
+                        rte_write32(rte_cpu_to_be_32(RTE_BIT32(log_desc_n)), &eqp->sw_qp.db_rec[0])
+                    mlx5_vdpa_is_modify_virtq_supported
+                    mlx5_devx_cmd_create_virtq
+                (mlx5_vdpa_c_thread_wait_bulk_tasks_done(&remaining_cnt, &err_cnt, 2000)
+                    rte_delay_us_sleep(sleep_time)
         priv->vdev = rte_vdpa_register_device(cdev->dev, &mlx5_vdpa_ops)
 	.remove = mlx5_vdpa_dev_remove,
 };
@@ -983,6 +1095,7 @@ static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
         rte_ring_enqueue_elem_finish(r, obj, sizeof(struct mlx5_vdpa_task), n) -> 完成将多个对象加入环中。请注意，加入队列的对象数量不应超过先前 enqueue_start 返回的值。
 	.dev_cleanup = mlx5_vdpa_dev_cleanup,
 	.set_vring_state = mlx5_vdpa_set_vring_state,
+        mlx5_vdpa_virtq_enable(priv, vring, state)
 	.set_features = mlx5_vdpa_features_set,
         if (RTE_VHOST_NEED_LOG(features))
             rte_vhost_get_negotiated_features
@@ -1195,9 +1308,24 @@ RTE_INIT(rte_mlx5_pmd_init)
                     TAILQ_INSERT_TAIL(&rte_pci_bus.driver_list, driver, next)
             mlx5_common_auxiliary_init
                 rte_auxiliary_register(&mlx5_auxiliary_driver)
-    mlx5_set_ptype_table
-    mlx5_set_cksum_table
-    mlx5_set_swp_types_table
+    mlx5_set_ptype_table -> Build a table to translate Rx completion flags to packet type
+        uint32_t (*p)[RTE_DIM(mlx5_ptype_table)] = &mlx5_ptype_table
+        bit[1:0] = l3_hdr_type
+        bit[4:2] = l4_hdr_type
+        bit[5] = ip_frag
+        bit[6] = tunneled
+        bit[7] = outer_l3_type
+    mlx5_set_cksum_table -> Build a table to translate packet to checksum type of Verbs
+        bit[0] = RTE_MBUF_F_TX_TCP_SEG
+        bit[2:3] = RTE_MBUF_F_TX_UDP_CKSUM, RTE_MBUF_F_TX_TCP_CKSUM
+        bit[4] = RTE_MBUF_F_TX_IP_CKSUM
+        bit[8] = RTE_MBUF_F_TX_OUTER_IP_CKSUM
+        bit[9] = tunnel
+    mlx5_set_swp_types_table -> Build a table to translate packet type of mbuf to SWP type of Verbs
+        bit[0:1] = RTE_MBUF_F_TX_L4_MASK
+        bit[4] = RTE_MBUF_F_TX_IPV6
+        bit[8] = RTE_MBUF_F_TX_OUTER_IPV6
+        bit[9] = RTE_MBUF_F_TX_OUTER_UDP
     mlx5_class_driver_register(&mlx5_net_driver)
 
 
@@ -1207,6 +1335,8 @@ static struct rte_auxiliary_driver mlx5_auxiliary_driver = {
 	},
 	.match = mlx5_common_auxiliary_match,
 	.probe = mlx5_common_auxiliary_probe,
+        dev->device.numa_node = mlx5_auxiliary_get_numa(dev)
+        mlx5_common_dev_probe
 	.remove = mlx5_common_auxiliary_remove,
 	.dma_map = mlx5_common_auxiliary_dma_map,
 	.dma_unmap = mlx5_common_auxiliary_dma_unmap,
@@ -1264,6 +1394,9 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.reg_mr = mlx5_glue_reg_mr,
 	.reg_mr_iova = mlx5_glue_reg_mr_iova,
 	.alloc_null_mr = mlx5_glue_alloc_null_mr,
+        #ifdef HAVE_IBV_DEVX_OBJ
+            ibv_alloc_null_mr
+        (void)pd
 	.dereg_mr = mlx5_glue_dereg_mr,
 	.create_counter_set = mlx5_glue_create_counter_set,
 	.destroy_counter_set = mlx5_glue_destroy_counter_set,
@@ -1288,8 +1421,10 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.dr_create_flow_action_pop_vlan =
 		mlx5_glue_dr_create_flow_action_pop_vlan,
 	.dr_create_flow_tbl = mlx5_glue_dr_create_flow_tbl,
+        mlx5dv_dr_table_create(domain, level)
 	.dr_destroy_flow_tbl = mlx5_glue_dr_destroy_flow_tbl,
 	.dr_create_domain = mlx5_glue_dr_create_domain,
+        mlx5dv_dr_domain_create(ctx, domain)
 	.dr_destroy_domain = mlx5_glue_dr_destroy_domain,
 	.dr_sync_domain = mlx5_glue_dr_sync_domain,
 	.dv_create_cq = mlx5_glue_dv_create_cq,
@@ -1299,8 +1434,10 @@ const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
 	.dv_init_obj = mlx5_glue_dv_init_obj,
 	.dv_create_qp = mlx5_glue_dv_create_qp,
 	.dv_create_flow_matcher = mlx5_glue_dv_create_flow_matcher,
+        mlx5dv_dr_matcher_create
 	.dv_create_flow_matcher_root = __mlx5_glue_dv_create_flow_matcher,
 	.dv_create_flow = mlx5_glue_dv_create_flow,
+        mlx5dv_create_flow
 	.dv_create_flow_root = __mlx5_glue_dv_create_flow,
 	.dv_create_flow_action_counter =
 		mlx5_glue_dv_create_flow_action_counter,
@@ -1956,6 +2093,14 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct vhu_msg_context *ctx, 
         reg->fd              = ctx->fds[i];
         mmap_offset = memory->regions[i].mmap_offset
         vhost_user_mmap_region(dev, reg, mmap_offset)
+            guest memory region size: 0x40000000
+            guest physical addr: 0x0
+            guest virtual  addr: 0x7fa58be00000
+            host  virtual  addr: 0x7fffa8000000
+            mmap addr : 0x7fffa8000000
+            mmap size : 0x40000000
+            mmap align: 0x200000
+            mmap off  : 0x0
     async_dma_map(dev, true)
     vhost_user_postcopy_register(dev, main_fd, ctx)
     for (i = 0; i < dev->nr_vring; i++)
