@@ -1086,30 +1086,34 @@ static struct rte_vdpa_dev_ops mlx5_vdpa_ops = {
 	.get_queue_num = mlx5_vdpa_get_queue_num,
         *queue_num = priv->caps.max_num_virtio_queues / 2
 	.get_features = mlx5_vdpa_get_vdpa_features,
-        *features = MLX5_VDPA_DEFAULT_FEATURES
 	.get_protocol_features = mlx5_vdpa_get_protocol_features,
-        *features = MLX5_VDPA_PROTOCOL_FEATURES
 	.dev_conf = mlx5_vdpa_dev_config,
+        mlx5_vdpa_mem_register(priv) -> 这里的目标是将 virtio 设备的所有物理内存区域分组到一个间接 mkey 中。对于 KLM 固定缓冲区大小模式（HW 根据客户物理地址在一次读取中找到转换条目）：它的所有子直接 mkey 必须具有相同的大小，因此，它们中的每一个都应该在所有 virtio 内存区域和它们之间的空洞的 GCD 大小内。对于 KLM 模式（每个条目的大小可能不同，因此 HW 必须迭代条目）：每个 virtio 内存区域和它们之间的每个空洞都有一个条目，只需通过拆分其关联内存区域大于 2G 的条目来覆盖最大允许大小（2G）。这意味着每个 virtio 内存区域可以在 2 种模式下映射到多个直接 mkey。出于安全考虑，virtio 内存区域之间的所有无效内存空洞都将映射到空内存区域
+            struct rte_vhost_memory *mem = mlx5_vdpa_vhost_mem_regions_prepare
+            mlx5_vdpa_mem_cmp(mem, priv->vmem_info.vmem)
+            priv->vmem_info.vmem = mem
+            mrs = rte_zmalloc("mlx5 vDPA memory regions"
+            mlx5_vdpa_task_add(priv, thrd_idx, MLX5_VDPA_TASK_REG_MR,
+
+        mlx5_vdpa_virtqs_prepare
+        mlx5_vdpa_steer_setup
+        mlx5_vdpa_cqe_event_setup
+        priv->state = MLX5_VDPA_STATE_CONFIGURED
 	.dev_close = mlx5_vdpa_dev_close,
-        rte_ring_enqueue_bulk_elem_start -> 开始将几个对象放入环中。请注意，此函数不会将任何实际对象放入队列中，它只是为用户保留了这种能力。用户必须调用适当的 enqueue_elem_finish() 将对象复制到队列中并完成给定的入队操作
-        rte_ring_enqueue_elem_finish(r, obj, sizeof(struct mlx5_vdpa_task), n) -> 完成将多个对象加入环中。请注意，加入队列的对象数量不应超过先前 enqueue_start 返回的值。
 	.dev_cleanup = mlx5_vdpa_dev_cleanup,
 	.set_vring_state = mlx5_vdpa_set_vring_state,
-        mlx5_vdpa_virtq_enable(priv, vring, state)
 	.set_features = mlx5_vdpa_features_set,
-        if (RTE_VHOST_NEED_LOG(features))
-            rte_vhost_get_negotiated_features
-            rte_vhost_get_log_base
-            mlx5_vdpa_dirty_bitmap_set
-                mlx5_os_wrapped_mkey_create
-                mlx5_devx_cmd_modify_virtq
-            mlx5_vdpa_logging_enable
 	.migration_done = NULL,
 	.get_vfio_group_fd = NULL,
 	.get_vfio_device_fd = mlx5_vdpa_get_device_fd,
 	.get_notify_area = mlx5_vdpa_get_notify_area,
+        *offset = priv->var->mmap_off;
+        *size = priv->var->length;
 	.get_stats_names = mlx5_vdpa_get_stats_names,
 	.get_stats = mlx5_vdpa_get_stats,
+        mlx5_vdpa_virtq_stats_get(priv, qid, stats, n)
+            mlx5_devx_cmd_query_virtio_q_counters(virtq->counters, attr)
+                opcode MLX5_CMD_OP_QUERY_GENERAL_OBJECT
 	.reset_stats = mlx5_vdpa_reset_stats,
 };
 
@@ -1725,6 +1729,7 @@ rte_ctrl_thread_create
                         rte_vhost_extern_callback_register(vid, &g_extern_vhost_ops, NULL)
                     ret = fdset_add(&vhost_user.fdset, fd, vhost_user_read_cb, NULL, conn) -> vhost_user_read_cb
                         vhost_user_msg_handler
+                            msg_handler = &vhost_message_handlers[request]
                             "read message %s\n", msg_handler->descriptionread -> message VHOST_USER_GET_FEATURES
                             switch (request)
                             case VHOST_USER_SET_FEATURES:
@@ -1744,7 +1749,7 @@ rte_ctrl_thread_create
                             case VHOST_USER_NET_SET_MTU:
                             case VHOST_USER_SET_SLAVE_REQ_FD:
                             msg_result = (*dev->extern_ops.pre_msg_handle)(dev->vid, &ctx)
-                            msg_result = msg_handler->callback(&dev, &ctx, fd)
+                            msg_result = msg_handler->callback(&dev, &ctx, fd) -> vhost cb -> VHOST_MESSAGE_HANDLERS
                                 -> vhost_user_get_features
                                     rte_vhost_driver_get_features(dev->ifname, &features)
                                         vdpa_dev->ops->get_features(vdpa_dev, &vdpa_features)
@@ -1762,7 +1767,6 @@ struct rte_vhost_user_extern_ops g_extern_vhost_ops = {
         ctrlr = vhost_blk_ctrlr_find(path)
         switch ((int)msg->request)
 	.post_msg_handle = extern_vhost_post_msg_handler,
-
 };
 
 
@@ -1842,10 +1846,32 @@ testpmd -> main
 examples/vhost_blk/vhost_blk.c -> main
     rte_eal_init
     g_vhost_ctrlr = vhost_blk_ctrlr_construct(CTRLR_NAME) -> "vhost.socket" -> /root/project/net/dpdk/build/examples/vhost.socket
-        rte_vhost_driver_register(dev_pathname, 0)
-        create_unix_socket(vsocket)
+        rte_vhost_driver_register(dev_pathname, 0) -> vhost：添加 vhost-user 客户端模式，向 rte_vhost_driver_register() 添加新参数（标志）。当设置 RTE_VHOST_USER_CLIENT 标志时，DPDK vhost-user 充当客户端模式。这些标志还将允许未来的扩展而不会再次破坏 API。剩下的就是：分配一个 unix 套接字，绑定/监听服务器，连接客户端。此扩展仅适用于 vhost-user，因此当为 vhost-cuse 提供任何标志时，我们只需退出并报告错误 -> vhost：引入异步入队注册 API，执行大型内存复制通常占用大部分 CPU 周期，并成为 vhost-user 入队操作中的热点。为了将大型复制从 CPU 卸载到 DMA 设备，引入了异步 API，CPU 只需将复制作业提交给 DMA，而无需等待其复制完成。因此，数据传输期间无需 CPU 干预。我们可以节省宝贵的 CPU 周期并提高基于 vhost-user 的应用程序的整体吞吐量。此补丁引入了用于 vhost 异步数据入队操作的注册/取消注册 API。除了注册 API 实现外，还定义了异步入队数据路径所需的数据结构和异步回调函数的原型
+            vsocket = malloc(sizeof(struct vhost_user_socket))
+            1ULL << VIRTIO_NET_F_HOST_TSO4
+            VIRTIO_NET_F_HOST_TSO6
+            VIRTIO_NET_F_HOST_UFO
+            if ((flags & RTE_VHOST_USER_CLIENT)
+                vhost_user_reconnect_init
+                    rte_ctrl_thread_create(&reconn_tid, "vhost_reconn", NULL, vhost_user_client_reconnect, NULL)
+                        vhost_user_connect_nonblock
+                            connect(fd, un, sz)
+                        vhost_user_add_connection
+                            vid = vhost_new_device()
+                                dev->flags = VIRTIO_DEV_BUILTIN_VIRTIO_NET
+                            vhost_attach_vdpa_device(vid, vsocket->vdpa_dev)
+                            vsocket->notify_ops->new_connection(vid)
+                            fdset_add(&vhost_user.fdset, fd, vhost_user_read_cb, NULL, conn)
+                            TAILQ_INSERT_TAIL(&vsocket->conn_list, conn, next)
+            or vsocket->is_server = true -> Server
+            create_unix_socket(vsocket)
+            vhost_user.vsockets[vhost_user.vsocket_cnt++] = vsocket
         rte_vhost_driver_set_features(dev_pathname, VHOST_BLK_FEATURES)
-        ctrlr->bdev = vhost_blk_bdev_construct("malloc0", "vhost_blk_malloc0", 4096, 32768, 0)
+        ctrlr = rte_zmalloc(NULL, sizeof(*ctrlr), RTE_CACHE_LINE_SIZE)
+        vhost_dev_install_rte_compat_hooks(dev_pathname)
+        ctrlr->bdev = vhost_blk_bdev_construct("malloc0", "vhost_blk_malloc0", 4096, 32768, 0) -> 128MB -> in qemu, lsblk show vda size = 128MB
+            bdev = rte_zmalloc(NULL, sizeof(*bdev), RTE_CACHE_LINE_SIZE)
+            bdev->data = rte_zmalloc(NULL, blk_cnt * blk_size, 0) -> use memory as disk storage space
         rte_vhost_driver_callback_register(dev_pathname, &vhost_blk_device_ops)
             vsocket->notify_ops = ops
     rte_vhost_driver_start(dev_pathname)
@@ -1859,8 +1885,23 @@ examples/vhost_blk/vhost_blk.c -> main
 
 struct rte_vhost_device_ops vhost_blk_device_ops = {
 	.new_device =  new_device,
+        ret = rte_vhost_get_ifname(vid, path, PATH_MAX)
+        ctrlr = vhost_blk_ctrlr_find(path)
+        rte_vhost_get_negotiated_features
+        rte_vhost_get_negotiated_protocol_features
+        for (i = 0; i < NUM_OF_BLK_QUEUES; i++)
+            rte_vhost_get_vhost_vring
+            rte_vhost_get_vring_base
+            rte_vhost_get_vhost_ring_inflight
+            rte_vhost_get_vring_base_from_inflight
+            rte_vhost_enable_guest_notification
+        rte_vhost_get_mem_table
+        alloc_task_pool
+        rte_ctrl_thread_create(&tid, "vhostblk-ctrlr", NULL, &ctrlr_worker, ctrlr)
+        ctrlr->started = 1
 	.destroy_device = destroy_device,
 	.new_connection = new_connection,
+        vhost_session_install_rte_compat_hooks
 };
 
 
@@ -1878,25 +1919,39 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
 	.get_features = vhost_vdpa_get_features,
         vhost_vdpa_ioctl(data->vhostfd, VHOST_GET_FEATURES, features) -> kernel -> .unlocked_ioctl	= vhost_vdpa_unlocked_ioctl
 	.set_features = vhost_vdpa_set_features,
+        vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_FEATURES, &features)
 	.set_memory_table = vhost_vdpa_set_memory_table,
         vhost_vdpa_iotlb_batch_begin
+            msg.type = VHOST_IOTLB_MSG_V2;
+	        msg.iotlb.type = VHOST_IOTLB_BATCH_BEGIN
+            write(data->vhostfd, &msg, sizeof(msg)
         vhost_vdpa_dma_unmap
         rte_memseg_contig_walk_thread_unsafe(vhost_vdpa_map_contig, dev)
             vhost_vdpa_dma_map(dev, ms->addr, ms->iova, len)
         rte_memseg_walk_thread_unsafe(vhost_vdpa_map, dev)
         vhost_vdpa_iotlb_batch_end
 	.set_vring_num = vhost_vdpa_set_vring_num,
-	.set_vring_base = vhost_vdpa_set_vring_base,
+	.set_vring_base = vhost_vdpa_set_vring_base, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_BASE, state)
 	.get_vring_base = vhost_vdpa_get_vring_base,
-	.set_vring_call = vhost_vdpa_set_vring_call,
-	.set_vring_kick = vhost_vdpa_set_vring_kick,
-	.set_vring_addr = vhost_vdpa_set_vring_addr,
+	.set_vring_call = vhost_vdpa_set_vring_call, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_CALL, file)
+	.set_vring_kick = vhost_vdpa_set_vring_kick, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_KICK, file)
+	.set_vring_addr = vhost_vdpa_set_vring_addr, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_ADDR, addr)
 	.get_status = vhost_vdpa_get_status,
 	.set_status = vhost_vdpa_set_status,
 	.get_config = vhost_vdpa_get_config,
 	.set_config = vhost_vdpa_set_config,
 	.enable_qp = vhost_vdpa_enable_queue_pair,
 	.dma_map = vhost_vdpa_dma_map_batch,
+        vhost_vdpa_iotlb_batch_begin
+        vhost_vdpa_dma_map
+            msg.type = VHOST_IOTLB_MSG_V2
+            msg.iotlb.type = VHOST_IOTLB_UPDATE -> to kernel
+            msg.iotlb.iova = iova;
+            msg.iotlb.uaddr = (uint64_t)(uintptr_t)addr;
+            msg.iotlb.size = len;
+            msg.iotlb.perm = VHOST_ACCESS_RW;
+            write(data->vhostfd, &msg, sizeof(msg)
+        vhost_vdpa_iotlb_batch_end
 	.dma_unmap = vhost_vdpa_dma_unmap_batch,
 	.update_link_state = vhost_vdpa_update_link_state,
 	.get_intr_fd = vhost_vdpa_get_intr_fd,
@@ -1940,6 +1995,7 @@ struct virtio_user_backend_ops virtio_ops_user = {
             vq->log_guest_addr = 0;
     .set_vring_call = vhost_user_set_vring_call,
         vq = dev->virtqueue[file.index]
+        vhost_user_notify_queue_state(dev, vq, 0)
         vq->callfd = file.fd
     .set_vring_kick = vhost_user_set_vring_kick,
         vq = dev->virtqueue[file.index]
@@ -2046,6 +2102,8 @@ virtio_user_set_status
 VHOST_MESSAGE_HANDLER(VHOST_USER_NONE, NULL, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_FEATURES, vhost_user_get_features, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_FEATURES, vhost_user_set_features, false) \
+    if (vdpa_dev)
+        vdpa_dev->ops->set_features(dev->vid)
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_OWNER, vhost_user_set_owner, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_RESET_OWNER, vhost_user_reset_owner, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_MEM_TABLE, vhost_user_set_mem_table, true) \
@@ -2062,9 +2120,11 @@ VHOST_MESSAGE_HANDLER(VHOST_USER_GET_PROTOCOL_FEATURES, vhost_user_get_protocol_
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_PROTOCOL_FEATURES, vhost_user_set_protocol_features, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_QUEUE_NUM, vhost_user_get_queue_num, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENABLE, vhost_user_set_vring_enable, false) \
+    dev->virtqueue[index]->enabled = enable
 VHOST_MESSAGE_HANDLER(VHOST_USER_SEND_RARP, vhost_user_send_rarp, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_NET_SET_MTU, vhost_user_net_set_mtu, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_SLAVE_REQ_FD, vhost_user_set_req_fd, true) \
+    dev->slave_req_fd = fd
 VHOST_MESSAGE_HANDLER(VHOST_USER_IOTLB_MSG, vhost_user_iotlb_msg, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_CONFIG, vhost_user_get_config, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_CONFIG, vhost_user_set_config, false) \
@@ -2073,8 +2133,20 @@ VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_LISTEN, vhost_user_set_postcopy_listen
 VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_END, vhost_user_postcopy_end, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_INFLIGHT_FD, vhost_user_get_inflight_fd, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_INFLIGHT_FD, vhost_user_set_inflight_fd, true) \
+    pervq_inflight_size = get_pervq_shm_size_packed(queue_size)
+    or pervq_inflight_size = get_pervq_shm_size_split(queue_size)
+    addr = mmap(0, mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, mmap_offset)
+    addr = (void *)((char *)addr + pervq_inflight_size)
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_STATUS, vhost_user_set_status, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_STATUS, vhost_user_get_status, false)
+
+static vhost_message_handler_t vhost_message_handlers[] = {
+	VHOST_MESSAGE_HANDLERS
+};
+
+
+
+msg_handler = &vhost_message_handlers[request]
 
 
 vhost_user_set_mem_table(struct virtio_net **pdev, struct vhu_msg_context *ctx, int main_fd)
@@ -2253,3 +2325,113 @@ cmdline_parse_inst_t cmd_create_vdpa_port
     cmd_create_vdpa_port_parsed
         dev = rte_vdpa_find_device_by_name(res->bdf)
         start_vdpa(&vports[devcnt]
+
+
+
+
+static struct rte_vdpa_dev_ops ifcvf_net_ops = {
+	.get_queue_num = ifcvf_get_queue_num,
+	.get_features = ifcvf_get_vdpa_features,
+	.get_protocol_features = ifcvf_get_protocol_features,
+	.dev_conf = ifcvf_dev_config,
+	.dev_close = ifcvf_dev_close,
+	.set_vring_state = ifcvf_set_vring_state,
+	.set_features = ifcvf_set_features,
+	.migration_done = NULL,
+	.get_vfio_group_fd = ifcvf_get_vfio_group_fd,
+	.get_vfio_device_fd = ifcvf_get_vfio_device_fd,
+	.get_notify_area = ifcvf_get_notify_area,
+	.get_dev_type = ifcvf_get_device_type,
+};
+
+
+static struct rte_vdpa_dev_ops ifcvf_blk_ops = {
+	.get_queue_num = ifcvf_get_queue_num,
+	.get_features = ifcvf_get_vdpa_features,
+	.set_features = ifcvf_set_features,
+	.get_protocol_features = ifcvf_blk_get_protocol_features,
+	.dev_conf = ifcvf_dev_config,
+	.dev_close = ifcvf_dev_close,
+	.set_vring_state = ifcvf_set_vring_state,
+	.migration_done = NULL,
+	.get_vfio_group_fd = ifcvf_get_vfio_group_fd,
+	.get_vfio_device_fd = ifcvf_get_vfio_device_fd,
+	.get_notify_area = ifcvf_get_notify_area,
+	.get_config = ifcvf_blk_get_config,
+	.get_dev_type = ifcvf_get_device_type,
+};
+
+
+intel, vdpa,
+RTE_PMD_REGISTER_PCI(net_ifcvf, rte_ifcvf_vdpa)
+ifcvf_pci_probe
+    kvlist = rte_kvargs_parse(pci_dev->device.devargs->args, ifcvf_valid_arguments)
+    rte_kvargs_process(kvlist, IFCVF_VDPA_MODE, &open_int, &vdpa_mode)
+    list = rte_zmalloc("ifcvf", sizeof(*list), 0)
+    internal = rte_zmalloc("ifcvf", sizeof(*internal), 0)
+    ifcvf_vfio_setup(internal)
+        rte_vfio_get_group_num(rte_pci_get_sysfs_path(), devname, &iommu_group_num)
+        internal->vfio_container_fd = rte_vfio_container_create()
+        internal->vfio_group_fd = rte_vfio_container_group_bind(internal->vfio_container_fd, iommu_group_num)
+        internal->hw.mem_resource[i].addr = internal->pdev->mem_resource[i].addr;
+		internal->hw.mem_resource[i].phys_addr = internal->pdev->mem_resource[i].phys_addr;
+		internal->hw.mem_resource[i].len = internal->pdev->mem_resource[i].len;
+    ifcvf_init_hw(&internal->hw, internal->pdev)
+        ret = PCI_READ_CONFIG_BYTE(dev, &pos, PCI_CAPABILITY_LIST)
+        PCI_READ_CONFIG_RANGE(dev, (u32 *)&cap, sizeof(cap), pos)
+        case IFCVF_PCI_CAP_COMMON_CFG
+        case IFCVF_PCI_CAP_NOTIFY_CFG
+        case IFCVF_PCI_CAP_ISR_CFG
+        case IFCVF_PCI_CAP_DEVICE_CFG
+        hw->lm_cfg = hw->mem_resource[4].addr
+    rte_kvargs_process(kvlist, IFCVF_SW_FALLBACK_LM, &open_int, &sw_fallback_lm)
+    TAILQ_INSERT_TAIL(&internal_list, list, next)
+    internal->vdev = rte_vdpa_register_device(&pci_dev->device, dev_info[internal->hw.device_type].ops) -> ifcvf_blk_ops | ifcvf_net_ops
+
+
+new_connection(int vid)
+    vhost_session_install_rte_compat_hooks
+        rte_vhost_extern_callback_register(vsession->vid, &g_spdk_extern_vhost_ops, NULL)
+struct rte_vhost_user_extern_ops g_spdk_extern_vhost_ops = {
+    .pre_msg_handle = extern_vhost_pre_msg_handler,
+        rte_vhost_get_ifname(vid, path, PATH_MAX)
+        ctrlr = vhost_blk_ctrlr_find(path)
+        vhost_blk_get_config(ctrlr->bdev, msg->payload.cfg.region, msg->payload.cfg.size)
+    .post_msg_handle = extern_vhost_post_msg_handler,
+};
+extern_vhost_post_msg_handler(int vid, void *_msg)
+    vsession = vhost_session_find_by_vid(vid)
+    if (msg->request == VHOST_USER_SET_MEM_TABLE)
+        vhost_register_memtable_if_required(vsession, vid)
+            vhost_get_mem_table(vid, &new_mem) -> vhost：如果未发生改变，则注册一次 memtable，将 memtable 寄存器移出 start_device，移入 vhost-msg SET_MEMTABLE 的 post_handler 中；在 destroy_connection 中而不是 destroy_device 中注销 memtable，如果 memtable 信息在 msg 中未发生改变，则无需多次注册
+                 rte_vhost_get_mem_table(vid, mem) -> 将在内部分配一个 rte_vhost_vhost_memory 对象，用于保存客户机内存区域。应用程序应在 destroy_device() 回调中释放它
+                    m = malloc(sizeof(struct rte_vhost_memory) + size)
+                    memcpy(m->regions, dev->mem->regions, size)
+            vhost_session_mem_register(vsession->mem)
+                for (i = 0; i < mem->nregions; i++)
+                    vhost_session_mem_region_calc(&previous_start, &start, &end, &len, &mem->regions[i])
+                        *start = FLOOR_2MB(region->mmap_addr)
+                        *end = CEIL_2MB(region->mmap_addr + region->mmap_size)
+                    spdk_mem_register((void *)start, len)
+                        spdk_mem_map_translate(g_mem_reg_map, (uint64_t)seg_vaddr, NULL)
+                        spdk_mem_map_set_translation(g_mem_reg_map, (uint64_t)vaddr, VALUE_2MB, seg_len == 0 ? REG_MAP_REGISTERED | REG_MAP_NOTIFY_START : REG_MAP_REGISTERED)
+            if (vhost_memory_changed(new_mem, vsession->mem))
+                vhost_session_mem_register(vsession->mem)
+    switch (msg->request)
+    case VHOST_USER_SET_FEATURES:
+        vhost_get_negotiated_features(vid, &vsession->negotiated_features) -> rte_vhost_get_negotiated_features(vid, negotiated_features)
+    case VHOST_USER_SET_VRING_CALL
+        set_device_vq_callfd
+            q = &vsession->virtqueue[qid]
+            q->used_req_cnt += 1
+    case VHOST_USER_SET_VRING_KICK
+        enable_device_vq
+            rte_vhost_get_vhost_vring(vsession->vid, qid, &q->vring)
+            rte_vhost_get_vhost_ring_inflight
+            rte_vhost_get_vring_base
+            rc = backend->alloc_vq_tasks(vsession, qid) -> alloc_vq_task_pool
+                vq->tasks = spdk_zmalloc
+            spdk_interrupt_mode_is_enabled
+                backend->register_vq_interrupt(vsession, q)
+        g_spdk_vhost_ops.new_device(vid)
+

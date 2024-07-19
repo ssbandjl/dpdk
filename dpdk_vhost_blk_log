@@ -97,3 +97,189 @@ Ctrlr Worker Thread start
 VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_MEM_TABLE
 VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) memory regions not changed
 
+
+
+
+---------------------------------------
+[root@localhost examples]# ./dpdk-vhost_blk -m 1024
+EAL: Detected CPU lcores: 128
+EAL: Detected NUMA nodes: 4
+EAL: Detected static linkage of DPDK
+EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
+EAL: Selected IOVA mode 'VA'
+EAL: VFIO support initialized
+EAL: Probe PCI driver: mlx5_pci (15b3:1017) device: 0000:08:00.0 (socket 0)
+...
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) binding succeeded
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new vhost user connection is 1321
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new device, handle is 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) negotiated Vhost-user protocol features: 0x11ebf
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_QUEUE_NUM
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_SLAVE_REQ_FD
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_OWNER
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring call idx:0 file:1323
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_ERR
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) negotiated Virtio features: 0x540000000 -> 设置协商的属性
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new device status(0x00000008):
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -RESET: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -ACKNOWLEDGE: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FEATURES_OK: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER_OK: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DEVICE_NEED_RESET: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FAILED: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_INFLIGHT_FD
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd mmap_size: 4160
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd mmap_offset: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd num_queues: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd queue_size: 128
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd fd: 1324
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd pervq_inflight_size: 4160
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring call idx:0 file:1325
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) negotiated Virtio features: 0x540000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_MEM_TABLE
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) guest memory region size: 0x40000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       guest physical addr: 0x0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       guest virtual  addr: 0x7f91d7e00000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       host  virtual  addr: 0x2aaaaac00000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap addr : 0x2aaaaac00000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap size : 0x40000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap align: 0x200000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap off  : 0x0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_NUM
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_BASE
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring base idx:0 last_used_idx:0 last_avail_idx:0.
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_ADDR
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_KICK
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring kick idx:0 file:1326
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) reallocated virtqueue on node 2
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) reallocated device on node 2
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_ENABLE
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set queue enable: 1 to qp idx: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new device status(0x0000000f):
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -RESET: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -ACKNOWLEDGE: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FEATURES_OK: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER_OK: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DEVICE_NEED_RESET: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FAILED: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) virtio is now ready for processing.
+New Device /root/project/net/dpdk/build/examples/vhost.socket, Device ID 0
+Ctrlr Worker Thread start
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_ENABLE
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set queue enable: 0 to qp idx: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_VRING_BASE
+Destroy /root/project/net/dpdk/build/examples/vhost.socket Device ID 0
+Ctrlr Worker Thread Exiting
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring base idx:0 file:32768
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new device status(0x00000000):
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -RESET: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -ACKNOWLEDGE: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FEATURES_OK: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER_OK: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DEVICE_NEED_RESET: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FAILED: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vhost peer closed
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new vhost user connection is 1321
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new device, handle is 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) negotiated Vhost-user protocol features: 0x11ebf
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_QUEUE_NUM
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_SLAVE_REQ_FD
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_OWNER
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring call idx:0 file:1323
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_ERR
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_CONFIG
+block device:blk_size = 4096, blkcnt = 8000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) negotiated Virtio features: 0x140000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new device status(0x00000008):
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -RESET: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -ACKNOWLEDGE: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FEATURES_OK: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER_OK: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DEVICE_NEED_RESET: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FAILED: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_INFLIGHT_FD
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) get_inflight_fd num_queues: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) get_inflight_fd queue_size: 128
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) send inflight mmap_size: 2112
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) send inflight mmap_offset: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) send inflight fd: 1324
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_INFLIGHT_FD
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd mmap_size: 2112
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd mmap_offset: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd num_queues: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd queue_size: 128
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd fd: 1325
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set_inflight_fd pervq_inflight_size: 2112
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring call idx:0 file:1324
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_FEATURES
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) negotiated Virtio features: 0x140000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_MEM_TABLE
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) guest memory region size: 0xc0000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       guest physical addr: 0x0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       guest virtual  addr: 0x7f0b93e00000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       host  virtual  addr: 0x2aaaaac00000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap addr : 0x2aaaaac00000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap size : 0xc0000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap align: 0x200000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap off  : 0x0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) guest memory region size: 0x40000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       guest physical addr: 0x100000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       guest virtual  addr: 0x7f0c53e00000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       host  virtual  addr: 0x2aac2ac00000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap addr : 0x2aab6ac00000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap size : 0x100000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap align: 0x200000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)       mmap off  : 0xc0000000
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_NUM
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_BASE
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring base idx:0 last_used_idx:0 last_avail_idx:0.
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_ADDR
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_KICK
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) vring kick idx:0 file:1327
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) reallocated virtqueue on node 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) reallocated device on node 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_VRING_ENABLE
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) set queue enable: 1 to qp idx: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_GET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) read message VHOST_USER_SET_STATUS
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) new device status(0x0000000f):
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -RESET: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -ACKNOWLEDGE: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FEATURES_OK: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DRIVER_OK: 1
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -DEVICE_NEED_RESET: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket)      -FAILED: 0
+VHOST_CONFIG: (/root/project/net/dpdk/build/examples/vhost.socket) virtio is now ready for processing.
+New Device /root/project/net/dpdk/build/examples/vhost.socket, Device ID 0
+Ctrlr Worker Thread start
+
+
