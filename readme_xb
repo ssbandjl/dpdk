@@ -1996,7 +1996,7 @@ struct virtio_user_backend_ops virtio_ops_user = {
     .set_vring_call = vhost_user_set_vring_call,
         vq = dev->virtqueue[file.index]
         vhost_user_notify_queue_state(dev, vq, 0)
-        vq->callfd = file.fd
+        vq->callfd = file.fd -> is qemu eventfd
     .set_vring_kick = vhost_user_set_vring_kick,
         vq = dev->virtqueue[file.index]
         translate_ring_addresses(&dev, &vq)
@@ -2149,22 +2149,33 @@ static vhost_message_handler_t vhost_message_handlers[] = {
 msg_handler = &vhost_message_handlers[request]
 
 
+
 vhost_user_set_mem_table(struct virtio_net **pdev, struct vhu_msg_context *ctx, int main_fd)
-    vhost_memory_changed(memory, dev->mem)
+    VHOST_MEMORY_MAX_NREGIONS -> max regions = 8
+    vhost_memory_changed(memory, dev->mem) -> compare new and old mem addr, size
+        if (new_r->guest_phys_addr != old_r->guest_phys_addr)
     dev->notify_ops->vring_state_changed(dev->vid, i, 0) -> stop dma
         vring_conf_update(vid, eth_dev, vring)
         update_queuing_status(eth_dev, false)
         rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_QUEUE_STATE, NULL)
-    vhost_user_iotlb_flush_all(dev->virtqueue[i])
-    dev->guest_pages = rte_zmalloc_socket(NULL, dev->max_guest_pages *sizeof(struct guest_page), RTE_CACHE_LINE_SIZE, numa_node)
+    if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+        vhost_user_iotlb_flush_all(dev->virtqueue[i])
+    dev->guest_pages = rte_zmalloc_socket(NULL, dev->max_guest_pages *sizeof(struct guest_page), RTE_CACHE_LINE_SIZE, numa_node) -> malloc 8 pages from hugepage
     dev->mem = rte_zmalloc_socket("vhost-mem-table", sizeof(struct rte_vhost_memory) + sizeof(struct rte_vhost_mem_region) * memory->nregions, 0, numa_node)
-    for (i = 0; i < memory->nregions; i++)
+    for (i = 0; i < memory->nregions; i++) -> map muti mem region
         reg->guest_phys_addr = memory->regions[i].guest_phys_addr
         reg->guest_user_addr = memory->regions[i].userspace_addr;
         reg->size            = memory->regions[i].memory_size;
         reg->fd              = ctx->fds[i];
         mmap_offset = memory->regions[i].mmap_offset
         vhost_user_mmap_region(dev, reg, mmap_offset)
+            mmap_size = region->size + mmap_offset
+            mmap_size = RTE_ALIGN_CEIL(mmap_size, alignment)
+            mmap_addr = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_SHARED | populate, region->fd, 0) <- vhost_user_set_vring_call -> file.fd -> userspace vaddr, used by vm(hva, maped by mmu)
+            region->host_user_addr = (uint64_t)(uintptr_t)mmap_addr + mmap_offset
+            region->mmap_addr = mmap_addr
+            region->mmap_size = mmap_size
+            print mem info:
             guest memory region size: 0x40000000
             guest physical addr: 0x0
             guest virtual  addr: 0x7fa58be00000
@@ -2173,11 +2184,20 @@ vhost_user_set_mem_table(struct virtio_net **pdev, struct vhu_msg_context *ctx, 
             mmap size : 0x40000000
             mmap align: 0x200000
             mmap off  : 0x0
-    async_dma_map(dev, true)
+    if (dev->async_copy && rte_vfio_is_enabled("vfio"))
+        async_dma_map(dev, true)
+            rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD, page->host_user_addr, page->host_iova, page->size)
+                vfio_cfg = get_vfio_cfg_by_container_fd(container_fd)
+                    container_dma_map(vfio_cfg, vaddr, iova, len)
+                        vfio_dma_mem_map
+                            ioctl(vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map) -> iova used by device(iommu same pa with mmap_addr)
     vhost_user_postcopy_register(dev, main_fd, ctx)
+        vhost_user_postcopy_region_register
     for (i = 0; i < dev->nr_vring; i++)
-        vring_invalidate(dev, vq)
+        vring_invalidate(dev, vq) -> set null
         translate_ring_addresses(&dev, &vq)
+    dump_guest_pages(dev)
+    if (async_notify)
         dev->notify_ops->vring_state_changed(dev->vid, i, 1)
 
 
@@ -2434,4 +2454,5 @@ extern_vhost_post_msg_handler(int vid, void *_msg)
             spdk_interrupt_mode_is_enabled
                 backend->register_vq_interrupt(vsession, q)
         g_spdk_vhost_ops.new_device(vid)
+
 
