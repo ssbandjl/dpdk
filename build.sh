@@ -1,4 +1,7 @@
-# sudo apt-get install python3-pyelftools
+# apt-get install -y python3-pyelftools python-pyelftools
+
+meson setup -Dbuildtype=debug -Dexamples=all build
+#meson setup -Dbuildtype=debug -Dexamples=vdpa build
 
 meson setup -Dbuildtype=debug -Dexamples=helloworld build | meson configure -Dbuildtype=debug -Dexamples=helloworld
 sudo su
