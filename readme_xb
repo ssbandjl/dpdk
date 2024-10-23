@@ -228,7 +228,7 @@ rte_eal_init(int argc, char **argv)
             /var/run/dpdk
             eal_get_hugefile_prefix
             eal_set_runtime_dir
-                strlcpy(runtime_dir, run_dir, PATH_MAX) 
+                strlcpy(runtime_dir, run_dir, PATH_MAX)
         eal_adjust_config
             eal_auto_detect_cores -> eal：限制核心自动检测，当未指定以下选项时，此补丁使用 pthread_getaffinity_np() 来缩小使用的核心范围： * coremask (-c) * corelist (-l) * 和 coremap (--lcores) 这样做的目的 patch的目的是在容器环境下部署DPDK应用程序时省略这些核心相关选项，以便用户在开发应用程序时不需要决定核心相关参数。 相反，当应用程序部署在容器中时，请使用 cpu-set 来限制可以在该容器实例内使用哪些核心。 而容器内的DPDK应用程序只是依靠这种自动检测机制来启动轮询线程。 注意：之前有部分用户使用隔离CPU，默认可以排除。 请添加任务集等命令来使用这些核心。 测试示例： $taskset 0xc0000 ./examples/helloworld/build/helloworld -m 1024
                 rte_thread_get_affinity_by_id
@@ -268,8 +268,8 @@ rte_eal_init(int argc, char **argv)
                      mem_map(requested_addr, size, PROT_NONE, sys_flags, -1, 0)
                 RTE_PTR_ALIGN
             mapped_mem_cfg_addr = mmap(rte_mem_cfg_addr,
-			cfg_len_aligned, PROT_READ | PROT_WRITE,
-			MAP_SHARED | MAP_FIXED, mem_cfg_fd, 0);
+            cfg_len_aligned, PROT_READ | PROT_WRITE,
+            MAP_SHARED | MAP_FIXED, mem_cfg_fd, 0);
         eal_mcfg_update_from_internal
             mcfg->single_file_segments = internal_conf->single_file_segments
         rte_eal_config_attach
@@ -532,87 +532,87 @@ const struct feature_entry rte_cpu_feature_table[] = {
 
 长短选项:
 enum {
-	/* long options mapped to a short option */
+    /* long options mapped to a short option */
 #define OPT_HELP              "help"
-	OPT_HELP_NUM            = 'h',
+    OPT_HELP_NUM            = 'h',
 #define OPT_DEV_ALLOW	      "allow"
-	OPT_DEV_ALLOW_NUM       = 'a',
+    OPT_DEV_ALLOW_NUM       = 'a',
 #define OPT_DEV_BLOCK         "block"
-	OPT_DEV_BLOCK_NUM      = 'b',
+    OPT_DEV_BLOCK_NUM      = 'b',
 
-	/* first long only option value must be >= 256, so that we won't
-	 * conflict with short options */
-	OPT_LONG_MIN_NUM = 256,
+    /* first long only option value must be >= 256, so that we won't
+     * conflict with short options */
+    OPT_LONG_MIN_NUM = 256,
 #define OPT_BASE_VIRTADDR     "base-virtaddr"
-	OPT_BASE_VIRTADDR_NUM,
+    OPT_BASE_VIRTADDR_NUM,
 #define OPT_CREATE_UIO_DEV    "create-uio-dev"
-	OPT_CREATE_UIO_DEV_NUM,
+    OPT_CREATE_UIO_DEV_NUM,
 #define OPT_FILE_PREFIX       "file-prefix"
-	OPT_FILE_PREFIX_NUM,
+    OPT_FILE_PREFIX_NUM,
 #define OPT_HUGE_DIR          "huge-dir"
-	OPT_HUGE_DIR_NUM,
+    OPT_HUGE_DIR_NUM,
 #define OPT_HUGE_UNLINK       "huge-unlink"
-	OPT_HUGE_UNLINK_NUM,
+    OPT_HUGE_UNLINK_NUM,
 #define OPT_LCORES            "lcores"
-	OPT_LCORES_NUM,
+    OPT_LCORES_NUM,
 #define OPT_LOG_LEVEL         "log-level"
-	OPT_LOG_LEVEL_NUM,
+    OPT_LOG_LEVEL_NUM,
 #define OPT_TRACE             "trace"
-	OPT_TRACE_NUM,
+    OPT_TRACE_NUM,
 #define OPT_TRACE_DIR         "trace-dir"
-	OPT_TRACE_DIR_NUM,
+    OPT_TRACE_DIR_NUM,
 #define OPT_TRACE_BUF_SIZE    "trace-bufsz"
-	OPT_TRACE_BUF_SIZE_NUM,
+    OPT_TRACE_BUF_SIZE_NUM,
 #define OPT_TRACE_MODE        "trace-mode"
-	OPT_TRACE_MODE_NUM,
+    OPT_TRACE_MODE_NUM,
 #define OPT_MAIN_LCORE        "main-lcore"
-	OPT_MAIN_LCORE_NUM,
+    OPT_MAIN_LCORE_NUM,
 #define OPT_MBUF_POOL_OPS_NAME "mbuf-pool-ops-name"
-	OPT_MBUF_POOL_OPS_NAME_NUM,
+    OPT_MBUF_POOL_OPS_NAME_NUM,
 #define OPT_PROC_TYPE         "proc-type"
-	OPT_PROC_TYPE_NUM,
+    OPT_PROC_TYPE_NUM,
 #define OPT_NO_HPET           "no-hpet"
-	OPT_NO_HPET_NUM,
+    OPT_NO_HPET_NUM,
 #define OPT_NO_HUGE           "no-huge"
-	OPT_NO_HUGE_NUM,
+    OPT_NO_HUGE_NUM,
 #define OPT_NO_PCI            "no-pci"
-	OPT_NO_PCI_NUM,
+    OPT_NO_PCI_NUM,
 #define OPT_NO_SHCONF         "no-shconf"
-	OPT_NO_SHCONF_NUM,
+    OPT_NO_SHCONF_NUM,
 #define OPT_IN_MEMORY         "in-memory"
-	OPT_IN_MEMORY_NUM,
+    OPT_IN_MEMORY_NUM,
 #define OPT_SOCKET_MEM        "socket-mem"
-	OPT_SOCKET_MEM_NUM,
+    OPT_SOCKET_MEM_NUM,
 #define OPT_SOCKET_LIMIT        "socket-limit"
-	OPT_SOCKET_LIMIT_NUM,
+    OPT_SOCKET_LIMIT_NUM,
 #define OPT_SYSLOG            "syslog"
-	OPT_SYSLOG_NUM,
+    OPT_SYSLOG_NUM,
 #define OPT_VDEV              "vdev"
-	OPT_VDEV_NUM,
+    OPT_VDEV_NUM,
 #define OPT_VFIO_INTR         "vfio-intr"
-	OPT_VFIO_INTR_NUM,
+    OPT_VFIO_INTR_NUM,
 #define OPT_VFIO_VF_TOKEN     "vfio-vf-token"
-	OPT_VFIO_VF_TOKEN_NUM,
+    OPT_VFIO_VF_TOKEN_NUM,
 #define OPT_VMWARE_TSC_MAP    "vmware-tsc-map"
-	OPT_VMWARE_TSC_MAP_NUM,
+    OPT_VMWARE_TSC_MAP_NUM,
 #define OPT_LEGACY_MEM    "legacy-mem"
-	OPT_LEGACY_MEM_NUM,
+    OPT_LEGACY_MEM_NUM,
 #define OPT_SINGLE_FILE_SEGMENTS    "single-file-segments"
-	OPT_SINGLE_FILE_SEGMENTS_NUM,
+    OPT_SINGLE_FILE_SEGMENTS_NUM,
 #define OPT_IOVA_MODE          "iova-mode"
-	OPT_IOVA_MODE_NUM,
+    OPT_IOVA_MODE_NUM,
 #define OPT_MATCH_ALLOCATIONS  "match-allocations"
-	OPT_MATCH_ALLOCATIONS_NUM,
+    OPT_MATCH_ALLOCATIONS_NUM,
 #define OPT_TELEMETRY         "telemetry"
-	OPT_TELEMETRY_NUM,
+    OPT_TELEMETRY_NUM,
 #define OPT_NO_TELEMETRY      "no-telemetry"
-	OPT_NO_TELEMETRY_NUM,
+    OPT_NO_TELEMETRY_NUM,
 #define OPT_FORCE_MAX_SIMD_BITWIDTH  "force-max-simd-bitwidth"
-	OPT_FORCE_MAX_SIMD_BITWIDTH_NUM,
+    OPT_FORCE_MAX_SIMD_BITWIDTH_NUM,
 #define OPT_HUGE_WORKER_STACK  "huge-worker-stack"
-	OPT_HUGE_WORKER_STACK_NUM,
+    OPT_HUGE_WORKER_STACK_NUM,
 
-	OPT_LONG_MAX_NUM
+    OPT_LONG_MAX_NUM
 };
 
 
@@ -706,13 +706,13 @@ eal_clean_runtime_dir
 EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
 
 static struct rte_pci_driver mlx5_common_pci_driver = {
-	.driver = {
-		   .name = MLX5_PCI_DRIVER_NAME,
-	},
-	.probe = mlx5_common_pci_probe,
-	.remove = mlx5_common_pci_remove,
-	.dma_map = mlx5_common_pci_dma_map,
-	.dma_unmap = mlx5_common_pci_dma_unmap,
+    .driver = {
+           .name = MLX5_PCI_DRIVER_NAME,
+    },
+    .probe = mlx5_common_pci_probe,
+    .remove = mlx5_common_pci_remove,
+    .dma_map = mlx5_common_pci_dma_map,
+    .dma_unmap = mlx5_common_pci_dma_unmap,
 };
 
 
@@ -757,7 +757,7 @@ pci_probe(void)
                                                 MLX5_SET(query_hca_cap_in, in, opcode, MLX5_CMD_OP_QUERY_HCA_CAP)
                                                 mlx5_glue->devx_general_cmd(ctx, in, size_in, out, size_out)
                                             vdpa_attr->valid = 1
-                                            vdpa_attr->virtio_version_1_0 = 
+                                            vdpa_attr->virtio_version_1_0 =
                                             vdpa_attr->doorbell_bar_offset
                                             ...
                                         mlx5_devx_cmd_query_nic_vport_context
@@ -775,7 +775,7 @@ pci_probe(void)
                                 rte_mem_event_callback_register("MLX5_MEM_EVENT_CB", mlx5_mr_mem_event_cb, NULL)
                                     case RTE_MEM_EVENT_FREE
                                         TAILQ_FOREACH(cdev, &devices_list, next)
-			                                mlx5_free_mr_by_addr(&cdev->mr_scache, mlx5_os_get_ctx_device_name(cdev->ctx), addr, len)
+                                            mlx5_free_mr_by_addr(&cdev->mr_scache, mlx5_os_get_ctx_device_name(cdev->ctx), addr, len)
                             is_valid_class_combination -> 校验组合
                             drivers_probe
                                 ...
@@ -830,10 +830,10 @@ eal_mcfg_complete
 
 RTE_PMD_REGISTER_VDEV(net_virtio_user, virtio_user_driver)
 static struct rte_vdev_driver virtio_user_driver = {
-	.probe = virtio_user_pmd_probe,
-	.remove = virtio_user_pmd_remove,
-	.dma_map = virtio_user_pmd_dma_map,
-	.dma_unmap = virtio_user_pmd_dma_unmap,
+    .probe = virtio_user_pmd_probe,
+    .remove = virtio_user_pmd_remove,
+    .dma_map = virtio_user_pmd_dma_map,
+    .dma_unmap = virtio_user_pmd_dma_unmap,
 };
 
 vdpa
@@ -895,29 +895,29 @@ static const struct virtio_dev_ops virtio_user_ops = {
 
 
 struct fwd_engine io_fwd_engine = {
-	.fwd_mode_name  = "io",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
-	.stream_init    = stream_init_forward,
-	.packet_fwd     = pkt_burst_io_forward,
+    .fwd_mode_name  = "io",
+    .port_fwd_begin = NULL,
+    .port_fwd_end   = NULL,
+    .stream_init    = stream_init_forward,
+    .packet_fwd     = pkt_burst_io_forward,
 };
 
 struct fwd_engine mac_fwd_engine = {
-	.fwd_mode_name  = "mac",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
-	.stream_init    = stream_init_mac_forward,
-	.packet_fwd     = pkt_burst_mac_forward,
+    .fwd_mode_name  = "mac",
+    .port_fwd_begin = NULL,
+    .port_fwd_end   = NULL,
+    .stream_init    = stream_init_mac_forward,
+    .packet_fwd     = pkt_burst_mac_forward,
 };
 
 
 
 struct fwd_engine mac_swap_engine = {
-	.fwd_mode_name  = "macswap",
-	.port_fwd_begin = NULL,
-	.port_fwd_end   = NULL,
-	.stream_init    = stream_init_mac_swap,
-	.packet_fwd     = pkt_burst_mac_swap,
+    .fwd_mode_name  = "macswap",
+    .port_fwd_begin = NULL,
+    .port_fwd_end   = NULL,
+    .stream_init    = stream_init_mac_swap,
+    .packet_fwd     = pkt_burst_mac_swap,
 };
 
 
@@ -980,10 +980,10 @@ dpdk/examples/vdpa/main.c
 
 static const struct rte_vhost_device_ops vdpa_sample_devops = {
         rte_vhost_get_ifname(vid, ifname, sizeof(ifname))
-	.new_device = new_device,
+    .new_device = new_device,
         dev = rte_vdpa_get_rte_device(vports[i].dev)
             return vdpa_dev->device
-	.destroy_device = destroy_device,
+    .destroy_device = destroy_device,
 };
 
 
@@ -1002,7 +1002,7 @@ Option -w, --pci-whitelist is deprecated, use -a, --allow option instead
 /data/soft/dpdk-stable-20.11.3/examples/vdpa/build/vdpa -w ${PCINUM%%.*}.2,class=vdpa --log-level=pmd,info -- -i
 create /tmp/sock-virtio0 0000:43:00.2
 
-nvidia use vdpa step: 
+nvidia use vdpa step:
 Create the ASAP2 environment:
 Create the VFs.
 Enter switchdev mode.
@@ -1029,10 +1029,10 @@ RTE_INIT(rte_mlx5_vdpa_init)
                     rte_auxiliary_register(&mlx5_auxiliary_driver)
     mlx5_class_driver_register(&mlx5_vdpa_driver)
 static struct mlx5_class_driver mlx5_vdpa_driver = {
-	.drv_class = MLX5_CLASS_VDPA,
-	.name = RTE_STR(MLX5_VDPA_DRIVER_NAME),
-	.id_table = mlx5_vdpa_pci_id_map,
-	.probe = mlx5_vdpa_dev_probe,
+    .drv_class = MLX5_CLASS_VDPA,
+    .name = RTE_STR(MLX5_VDPA_DRIVER_NAME),
+    .id_table = mlx5_vdpa_pci_id_map,
+    .probe = mlx5_vdpa_dev_probe,
         priv = rte_zmalloc("mlx5 vDPA device private", sizeof(*priv) + sizeof(struct mlx5_vdpa_virtq) *attr->vdpa.max_num_virtio_queues, RTE_CACHE_LINE_SIZE)
         mlx5_vdpa_config_get(mkvlist, priv)
             const char **params = (const char *[]){
@@ -1150,18 +1150,18 @@ static struct mlx5_class_driver mlx5_vdpa_driver = {
                 (mlx5_vdpa_c_thread_wait_bulk_tasks_done(&remaining_cnt, &err_cnt, 2000)
                     rte_delay_us_sleep(sleep_time)
         priv->vdev = rte_vdpa_register_device(cdev->dev, &mlx5_vdpa_ops)
-	.remove = mlx5_vdpa_dev_remove,
+    .remove = mlx5_vdpa_dev_remove,
 };
 
 
 
 vhost-user -> vdpa, 如: 通过virtio-net的vdpa_dev_id获取到对应的vDPA设备，并调用对应的vDPA的set_features函数
 static struct rte_vdpa_dev_ops mlx5_vdpa_ops = { -> vhost api wrap vdpa api
-	.get_queue_num = mlx5_vdpa_get_queue_num,   <- rte_vhost_driver_get_queue_num -> if (vdpa_dev->ops->get_queue_num(vdpa_dev, &vdpa_queue_num) < 0)
+    .get_queue_num = mlx5_vdpa_get_queue_num,   <- rte_vhost_driver_get_queue_num -> if (vdpa_dev->ops->get_queue_num(vdpa_dev, &vdpa_queue_num) < 0)
         *queue_num = priv->caps.max_num_virtio_queues / 2
-	.get_features = mlx5_vdpa_get_vdpa_features,
-	.get_protocol_features = mlx5_vdpa_get_protocol_features,
-	.dev_conf = mlx5_vdpa_dev_config,
+    .get_features = mlx5_vdpa_get_vdpa_features,
+    .get_protocol_features = mlx5_vdpa_get_protocol_features,
+    .dev_conf = mlx5_vdpa_dev_config,
         mlx5_vdpa_mem_register(priv) -> 这里的目标是将 virtio 设备的所有物理内存区域分组到一个间接 mkey 中。对于 KLM 固定缓冲区大小模式（HW 根据客户物理地址在一次读取中找到转换条目）：它的所有子直接 mkey 必须具有相同的大小，因此，它们中的每一个都应该在所有 virtio 内存区域和它们之间的空洞的 GCD 大小内。对于 KLM 模式（每个条目的大小可能不同，因此 HW 必须迭代条目）：每个 virtio 内存区域和它们之间的每个空洞都有一个条目，只需通过拆分其关联内存区域大于 2G 的条目来覆盖最大允许大小（2G）。这意味着每个 virtio 内存区域可以在 2 种模式下映射到多个直接 mkey。出于安全考虑，virtio 内存区域之间的所有无效内存空洞都将映射到空内存区域
             struct rte_vhost_memory *mem = mlx5_vdpa_vhost_mem_regions_prepare
             mlx5_vdpa_mem_cmp(mem, priv->vmem_info.vmem)
@@ -1173,8 +1173,8 @@ static struct rte_vdpa_dev_ops mlx5_vdpa_ops = { -> vhost api wrap vdpa api
         mlx5_vdpa_cqe_event_setup
             pthread_create(&priv->timer_tid, attrp, mlx5_vdpa_event_handle, (void *)priv) -> vdpa/mlx5：改进中断管理，驱动程序应通知客户机 CQ 轮询检测到的每个流量突发。CQ 轮询触发器由“event_mode”设备参数定义，要么通过对所有 CQ 进行忙轮询，要么通过使用 DevX 通道对 HW 完成事件进行阻塞调用。此外，当流量速率较低时，轮询事件模式可以转移到阻塞调用。当前阻塞调用使用 EAL 中断 API，在 API 管理中承受大量开销，并且仅使用单个线程为所有驱动程序和库提供服务。使用 DevX 通道的阻塞 FD 以便通过 DevX 通道 FD 机制直接进行阻塞调用
                 switch (priv->event_mode) {
-	            case MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER:
-	            case MLX5_VDPA_EVENT_MODE_FIXED_TIMER:
+                case MLX5_VDPA_EVENT_MODE_DYNAMIC_TIMER:
+                case MLX5_VDPA_EVENT_MODE_FIXED_TIMER:
                     while (1)
                         max = mlx5_vdpa_queues_complete(priv)
                         mlx5_vdpa_arm_all_cqs
@@ -1189,24 +1189,24 @@ static struct rte_vdpa_dev_ops mlx5_vdpa_ops = { -> vhost api wrap vdpa api
                                     cq->cq_obj.db_rec[0] = rte_cpu_to_be_32(cq->cq_ci)
                                     eqp->sw_qp.db_rec[0] = rte_cpu_to_be_32(eqp->qp_pi + cq_size)
                                 eventfd_write(cq->callfd, (eventfd_t)1)
-                        mlx5_vdpa_cq_arm(priv, &virtq->eqp.cq)    
+                        mlx5_vdpa_cq_arm(priv, &virtq->eqp.cq)
         priv->state = MLX5_VDPA_STATE_CONFIGURED
-	.dev_close = mlx5_vdpa_dev_close,
-	.dev_cleanup = mlx5_vdpa_dev_cleanup,
-	.set_vring_state = mlx5_vdpa_set_vring_state,
-	.set_features = mlx5_vdpa_features_set,
-	.migration_done = NULL,
-	.get_vfio_group_fd = NULL,
-	.get_vfio_device_fd = mlx5_vdpa_get_device_fd,
-	.get_notify_area = mlx5_vdpa_get_notify_area,
+    .dev_close = mlx5_vdpa_dev_close,
+    .dev_cleanup = mlx5_vdpa_dev_cleanup,
+    .set_vring_state = mlx5_vdpa_set_vring_state,
+    .set_features = mlx5_vdpa_features_set,
+    .migration_done = NULL,
+    .get_vfio_group_fd = NULL,
+    .get_vfio_device_fd = mlx5_vdpa_get_device_fd,
+    .get_notify_area = mlx5_vdpa_get_notify_area,
         *offset = priv->var->mmap_off;
         *size = priv->var->length;
-	.get_stats_names = mlx5_vdpa_get_stats_names,
-	.get_stats = mlx5_vdpa_get_stats,
+    .get_stats_names = mlx5_vdpa_get_stats_names,
+    .get_stats = mlx5_vdpa_get_stats,
         mlx5_vdpa_virtq_stats_get(priv, qid, stats, n)
             mlx5_devx_cmd_query_virtio_q_counters(virtq->counters, attr)
                 opcode MLX5_CMD_OP_QUERY_GENERAL_OBJECT
-	.reset_stats = mlx5_vdpa_reset_stats,
+    .reset_stats = mlx5_vdpa_reset_stats,
 };
 
 
@@ -1291,10 +1291,12 @@ rte_eal_memzone_init
 
 rte_eal_memory_init
     rte_eal_memseg_init
+    #ifndef RTE_ARCH_64
+        memseg_primary_init_32
+            get_mem_amount
         memseg_primary_init -> eal_dynmem_memseg_lists_init
             eal_memseg_list_init
                 eal_memseg_list_init_named
-
             eal_memseg_list_alloc
     eal_memalloc_init
         (rte_memseg_list_walk(fd_list_create_walk, NULL)
@@ -1304,8 +1306,43 @@ rte_eal_memory_init
         eal_legacy_hugepage_init or
         eal_dynmem_hugepage_init
             eal_dynmem_calc_num_pages_per_socket
+        eal_memalloc_alloc_seg_bulk
+            rte_memseg_list_walk_thread_unsafe(alloc_seg_walk, &wa)
+            alloc_seg
+                addr = eal_mem_alloc_socket(alloc_sz, socket_id)
+                fallocate ?
     or rte_eal_hugepage_attach
     rte_eal_memdevice_init
+
+
+
+
+
+
+malloc_socket
+    malloc_heap_alloc
+        malloc_heap_alloc_on_heap_id
+            alloc_more_mem_on_socket
+                try_expand_heap
+                    try_expand_heap_primary
+                        alloc_pages_on_heap
+                            eal_memalloc_alloc_seg_bulk
+                            rte_mem_check_dma_mask_thread_unsafe
+                                check_dma_mask
+                                    rte_memseg_walk_thread_unsafe(check_iova, &mask)
+                                        iova = (ms->iova + ms->len) - 1
+                                        if (!(iova & *mask))
+                        eal_memalloc_mem_event_notify(RTE_MEM_EVENT_ALLOC, map_addr, alloc_sz)
+                    or try_expand_heap_secondary
+
+
+rte_memzone_reserve
+rte_memzone_reserve_aligned
+rte_memzone_reserve_bounded
+    rte_memzone_reserve_thread_safe
+        memzone_reserve_aligned_thread_unsafe
+            malloc_heap_alloc
+
 
 
 rte_eal_malloc_heap_init
@@ -1363,31 +1400,31 @@ EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
 
 
 struct rte_pci_bus rte_pci_bus = {
-	.bus = {
-		.scan = rte_pci_scan,
-		.probe = pci_probe,
-		.cleanup = pci_cleanup,
-		.find_device = pci_find_device,
-		.plug = pci_plug,
-		.unplug = pci_unplug,
-		.parse = pci_parse,
-		.devargs_parse = rte_pci_devargs_parse,
-		.dma_map = pci_dma_map,
-		.dma_unmap = pci_dma_unmap,
-		.get_iommu_class = rte_pci_get_iommu_class,
-		.dev_iterate = rte_pci_dev_iterate,
-		.hot_unplug_handler = pci_hot_unplug_handler,
-		.sigbus_handler = pci_sigbus_handler,
-	},
-	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
-	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),
+    .bus = {
+        .scan = rte_pci_scan,
+        .probe = pci_probe,
+        .cleanup = pci_cleanup,
+        .find_device = pci_find_device,
+        .plug = pci_plug,
+        .unplug = pci_unplug,
+        .parse = pci_parse,
+        .devargs_parse = rte_pci_devargs_parse,
+        .dma_map = pci_dma_map,
+        .dma_unmap = pci_dma_unmap,
+        .get_iommu_class = rte_pci_get_iommu_class,
+        .dev_iterate = rte_pci_dev_iterate,
+        .hot_unplug_handler = pci_hot_unplug_handler,
+        .sigbus_handler = pci_sigbus_handler,
+    },
+    .device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
+    .driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),
 };
 
 
 drivers/common/mlx5/mlx5_common_pci.c
 
 
-dpdk init module, 
+dpdk init module,
 drivers/net/mlx5/mlx5.c
 RTE_INIT(rte_mlx5_pmd_init)
     mlx5_common_init
@@ -1425,181 +1462,181 @@ RTE_INIT(rte_mlx5_pmd_init)
 
 
 static struct rte_auxiliary_driver mlx5_auxiliary_driver = {
-	.driver = {
-		   .name = MLX5_AUXILIARY_DRIVER_NAME,
-	},
-	.match = mlx5_common_auxiliary_match,
-	.probe = mlx5_common_auxiliary_probe,
+    .driver = {
+           .name = MLX5_AUXILIARY_DRIVER_NAME,
+    },
+    .match = mlx5_common_auxiliary_match,
+    .probe = mlx5_common_auxiliary_probe,
         dev->device.numa_node = mlx5_auxiliary_get_numa(dev)
         mlx5_common_dev_probe
-	.remove = mlx5_common_auxiliary_remove,
-	.dma_map = mlx5_common_auxiliary_dma_map,
-	.dma_unmap = mlx5_common_auxiliary_dma_unmap,
+    .remove = mlx5_common_auxiliary_remove,
+    .dma_map = mlx5_common_auxiliary_dma_map,
+    .dma_unmap = mlx5_common_auxiliary_dma_unmap,
 };
 
 static struct mlx5_class_driver mlx5_net_driver = {
-	.drv_class = MLX5_CLASS_ETH,
-	.name = RTE_STR(MLX5_ETH_DRIVER_NAME),
-	.id_table = mlx5_pci_id_map,
-	.probe = mlx5_os_net_probe,
-	.remove = mlx5_net_remove,
-	.probe_again = 1,
-	.intr_lsc = 1,
-	.intr_rmv = 1,
+    .drv_class = MLX5_CLASS_ETH,
+    .name = RTE_STR(MLX5_ETH_DRIVER_NAME),
+    .id_table = mlx5_pci_id_map,
+    .probe = mlx5_os_net_probe,
+    .remove = mlx5_net_remove,
+    .probe_again = 1,
+    .intr_lsc = 1,
+    .intr_rmv = 1,
 };
 
 
 
 __rte_cache_aligned
 const struct mlx5_glue *mlx5_glue = &(const struct mlx5_glue) {
-	.version = MLX5_GLUE_VERSION,
-	.fork_init = mlx5_glue_fork_init,
-	.alloc_pd = mlx5_glue_alloc_pd,
-	.dealloc_pd = mlx5_glue_dealloc_pd,
-	.import_pd = mlx5_glue_import_pd,
-	.unimport_pd = mlx5_glue_unimport_pd,
-	.get_device_list = mlx5_glue_get_device_list,
-	.free_device_list = mlx5_glue_free_device_list,
-	.open_device = mlx5_glue_open_device,
-	.import_device = mlx5_glue_import_device,
+    .version = MLX5_GLUE_VERSION,
+    .fork_init = mlx5_glue_fork_init,
+    .alloc_pd = mlx5_glue_alloc_pd,
+    .dealloc_pd = mlx5_glue_dealloc_pd,
+    .import_pd = mlx5_glue_import_pd,
+    .unimport_pd = mlx5_glue_unimport_pd,
+    .get_device_list = mlx5_glue_get_device_list,
+    .free_device_list = mlx5_glue_free_device_list,
+    .open_device = mlx5_glue_open_device,
+    .import_device = mlx5_glue_import_device,
         #ifdef HAVE_MLX5_IBV_IMPORT_CTX_PD_AND_MR
             return ibv_import_device(cmd_fd);
-	.close_device = mlx5_glue_close_device,
-	.query_device = mlx5_glue_query_device,
-	.query_device_ex = mlx5_glue_query_device_ex,
-	.get_device_name = mlx5_glue_get_device_name,
-	.query_rt_values_ex = mlx5_glue_query_rt_values_ex,
-	.query_port = mlx5_glue_query_port,
-	.create_comp_channel = mlx5_glue_create_comp_channel,
-	.destroy_comp_channel = mlx5_glue_destroy_comp_channel,
-	.create_cq = mlx5_glue_create_cq,
-	.destroy_cq = mlx5_glue_destroy_cq,
-	.get_cq_event = mlx5_glue_get_cq_event,
-	.ack_cq_events = mlx5_glue_ack_cq_events,
-	.create_rwq_ind_table = mlx5_glue_create_rwq_ind_table,
-	.destroy_rwq_ind_table = mlx5_glue_destroy_rwq_ind_table,
-	.create_wq = mlx5_glue_create_wq,
-	.destroy_wq = mlx5_glue_destroy_wq,
-	.modify_wq = mlx5_glue_modify_wq,
-	.create_flow = mlx5_glue_create_flow,
-	.destroy_flow = mlx5_glue_destroy_flow,
-	.destroy_flow_action = mlx5_glue_destroy_flow_action,
-	.create_qp = mlx5_glue_create_qp,
-	.create_qp_ex = mlx5_glue_create_qp_ex,
-	.destroy_qp = mlx5_glue_destroy_qp,
-	.modify_qp = mlx5_glue_modify_qp,
-	.reg_mr = mlx5_glue_reg_mr,
-	.reg_mr_iova = mlx5_glue_reg_mr_iova,
-	.alloc_null_mr = mlx5_glue_alloc_null_mr,
+    .close_device = mlx5_glue_close_device,
+    .query_device = mlx5_glue_query_device,
+    .query_device_ex = mlx5_glue_query_device_ex,
+    .get_device_name = mlx5_glue_get_device_name,
+    .query_rt_values_ex = mlx5_glue_query_rt_values_ex,
+    .query_port = mlx5_glue_query_port,
+    .create_comp_channel = mlx5_glue_create_comp_channel,
+    .destroy_comp_channel = mlx5_glue_destroy_comp_channel,
+    .create_cq = mlx5_glue_create_cq,
+    .destroy_cq = mlx5_glue_destroy_cq,
+    .get_cq_event = mlx5_glue_get_cq_event,
+    .ack_cq_events = mlx5_glue_ack_cq_events,
+    .create_rwq_ind_table = mlx5_glue_create_rwq_ind_table,
+    .destroy_rwq_ind_table = mlx5_glue_destroy_rwq_ind_table,
+    .create_wq = mlx5_glue_create_wq,
+    .destroy_wq = mlx5_glue_destroy_wq,
+    .modify_wq = mlx5_glue_modify_wq,
+    .create_flow = mlx5_glue_create_flow,
+    .destroy_flow = mlx5_glue_destroy_flow,
+    .destroy_flow_action = mlx5_glue_destroy_flow_action,
+    .create_qp = mlx5_glue_create_qp,
+    .create_qp_ex = mlx5_glue_create_qp_ex,
+    .destroy_qp = mlx5_glue_destroy_qp,
+    .modify_qp = mlx5_glue_modify_qp,
+    .reg_mr = mlx5_glue_reg_mr,
+    .reg_mr_iova = mlx5_glue_reg_mr_iova,
+    .alloc_null_mr = mlx5_glue_alloc_null_mr,
         #ifdef HAVE_IBV_DEVX_OBJ
             ibv_alloc_null_mr
         (void)pd
-	.dereg_mr = mlx5_glue_dereg_mr,
-	.create_counter_set = mlx5_glue_create_counter_set,
-	.destroy_counter_set = mlx5_glue_destroy_counter_set,
-	.describe_counter_set = mlx5_glue_describe_counter_set,
-	.query_counter_set = mlx5_glue_query_counter_set,
-	.create_counters = mlx5_glue_create_counters,
-	.destroy_counters = mlx5_glue_destroy_counters,
-	.attach_counters = mlx5_glue_attach_counters,
-	.query_counters = mlx5_glue_query_counters,
-	.ack_async_event = mlx5_glue_ack_async_event,
-	.get_async_event = mlx5_glue_get_async_event,
-	.port_state_str = mlx5_glue_port_state_str,
-	.cq_ex_to_cq = mlx5_glue_cq_ex_to_cq,
-	.dr_create_flow_action_dest_flow_tbl =
-		mlx5_glue_dr_create_flow_action_dest_flow_tbl,
-	.dr_create_flow_action_dest_port =
-		mlx5_glue_dr_create_flow_action_dest_port,
-	.dr_create_flow_action_drop =
-		mlx5_glue_dr_create_flow_action_drop,
-	.dr_create_flow_action_push_vlan =
-		mlx5_glue_dr_create_flow_action_push_vlan,
-	.dr_create_flow_action_pop_vlan =
-		mlx5_glue_dr_create_flow_action_pop_vlan,
-	.dr_create_flow_tbl = mlx5_glue_dr_create_flow_tbl,
+    .dereg_mr = mlx5_glue_dereg_mr,
+    .create_counter_set = mlx5_glue_create_counter_set,
+    .destroy_counter_set = mlx5_glue_destroy_counter_set,
+    .describe_counter_set = mlx5_glue_describe_counter_set,
+    .query_counter_set = mlx5_glue_query_counter_set,
+    .create_counters = mlx5_glue_create_counters,
+    .destroy_counters = mlx5_glue_destroy_counters,
+    .attach_counters = mlx5_glue_attach_counters,
+    .query_counters = mlx5_glue_query_counters,
+    .ack_async_event = mlx5_glue_ack_async_event,
+    .get_async_event = mlx5_glue_get_async_event,
+    .port_state_str = mlx5_glue_port_state_str,
+    .cq_ex_to_cq = mlx5_glue_cq_ex_to_cq,
+    .dr_create_flow_action_dest_flow_tbl =
+        mlx5_glue_dr_create_flow_action_dest_flow_tbl,
+    .dr_create_flow_action_dest_port =
+        mlx5_glue_dr_create_flow_action_dest_port,
+    .dr_create_flow_action_drop =
+        mlx5_glue_dr_create_flow_action_drop,
+    .dr_create_flow_action_push_vlan =
+        mlx5_glue_dr_create_flow_action_push_vlan,
+    .dr_create_flow_action_pop_vlan =
+        mlx5_glue_dr_create_flow_action_pop_vlan,
+    .dr_create_flow_tbl = mlx5_glue_dr_create_flow_tbl,
         mlx5dv_dr_table_create(domain, level)
-	.dr_destroy_flow_tbl = mlx5_glue_dr_destroy_flow_tbl,
-	.dr_create_domain = mlx5_glue_dr_create_domain,
+    .dr_destroy_flow_tbl = mlx5_glue_dr_destroy_flow_tbl,
+    .dr_create_domain = mlx5_glue_dr_create_domain,
         mlx5dv_dr_domain_create(ctx, domain)
-	.dr_destroy_domain = mlx5_glue_dr_destroy_domain,
-	.dr_sync_domain = mlx5_glue_dr_sync_domain,
-	.dv_create_cq = mlx5_glue_dv_create_cq,
-	.dv_create_wq = mlx5_glue_dv_create_wq,
-	.dv_query_device = mlx5_glue_dv_query_device,
-	.dv_set_context_attr = mlx5_glue_dv_set_context_attr,
+    .dr_destroy_domain = mlx5_glue_dr_destroy_domain,
+    .dr_sync_domain = mlx5_glue_dr_sync_domain,
+    .dv_create_cq = mlx5_glue_dv_create_cq,
+    .dv_create_wq = mlx5_glue_dv_create_wq,
+    .dv_query_device = mlx5_glue_dv_query_device,
+    .dv_set_context_attr = mlx5_glue_dv_set_context_attr,
         mlx5dv_set_context_attr
-	.dv_init_obj = mlx5_glue_dv_init_obj,
-	.dv_create_qp = mlx5_glue_dv_create_qp,
-	.dv_create_flow_matcher = mlx5_glue_dv_create_flow_matcher,
+    .dv_init_obj = mlx5_glue_dv_init_obj,
+    .dv_create_qp = mlx5_glue_dv_create_qp,
+    .dv_create_flow_matcher = mlx5_glue_dv_create_flow_matcher,
         mlx5dv_dr_matcher_create
-	.dv_create_flow_matcher_root = __mlx5_glue_dv_create_flow_matcher,
-	.dv_create_flow = mlx5_glue_dv_create_flow,
+    .dv_create_flow_matcher_root = __mlx5_glue_dv_create_flow_matcher,
+    .dv_create_flow = mlx5_glue_dv_create_flow,
         mlx5dv_create_flow
-	.dv_create_flow_root = __mlx5_glue_dv_create_flow,
-	.dv_create_flow_action_counter =
-		mlx5_glue_dv_create_flow_action_counter,
-	.dv_create_flow_action_dest_ibv_qp =
-		mlx5_glue_dv_create_flow_action_dest_ibv_qp,
-	.dv_create_flow_action_dest_devx_tir =
-		mlx5_glue_dv_create_flow_action_dest_devx_tir,
-	.dv_create_flow_action_modify_header =
-		mlx5_glue_dv_create_flow_action_modify_header,
-	.dv_create_flow_action_modify_header_root =
-		__mlx5_glue_dv_create_flow_action_modify_header,
-	.dv_create_flow_action_packet_reformat =
-		mlx5_glue_dv_create_flow_action_packet_reformat,
-	.dv_create_flow_action_packet_reformat_root =
-		__mlx5_glue_dv_create_flow_action_packet_reformat,
-	.dv_create_flow_action_tag =  mlx5_glue_dv_create_flow_action_tag,
-	.dv_create_flow_action_meter = mlx5_glue_dv_create_flow_action_meter,
-	.dv_modify_flow_action_meter = mlx5_glue_dv_modify_flow_action_meter,
-	.dv_create_flow_action_aso = mlx5_glue_dv_create_flow_action_aso,
-	.dr_create_flow_action_default_miss =
-		mlx5_glue_dr_create_flow_action_default_miss,
-	.dv_destroy_flow = mlx5_glue_dv_destroy_flow,
-	.dv_destroy_flow_matcher = mlx5_glue_dv_destroy_flow_matcher,
-	.dv_destroy_flow_matcher_root = __mlx5_glue_dv_destroy_flow_matcher,
-	.dv_open_device = mlx5_glue_dv_open_device,
-	.devx_obj_create = mlx5_glue_devx_obj_create,
+    .dv_create_flow_root = __mlx5_glue_dv_create_flow,
+    .dv_create_flow_action_counter =
+        mlx5_glue_dv_create_flow_action_counter,
+    .dv_create_flow_action_dest_ibv_qp =
+        mlx5_glue_dv_create_flow_action_dest_ibv_qp,
+    .dv_create_flow_action_dest_devx_tir =
+        mlx5_glue_dv_create_flow_action_dest_devx_tir,
+    .dv_create_flow_action_modify_header =
+        mlx5_glue_dv_create_flow_action_modify_header,
+    .dv_create_flow_action_modify_header_root =
+        __mlx5_glue_dv_create_flow_action_modify_header,
+    .dv_create_flow_action_packet_reformat =
+        mlx5_glue_dv_create_flow_action_packet_reformat,
+    .dv_create_flow_action_packet_reformat_root =
+        __mlx5_glue_dv_create_flow_action_packet_reformat,
+    .dv_create_flow_action_tag =  mlx5_glue_dv_create_flow_action_tag,
+    .dv_create_flow_action_meter = mlx5_glue_dv_create_flow_action_meter,
+    .dv_modify_flow_action_meter = mlx5_glue_dv_modify_flow_action_meter,
+    .dv_create_flow_action_aso = mlx5_glue_dv_create_flow_action_aso,
+    .dr_create_flow_action_default_miss =
+        mlx5_glue_dr_create_flow_action_default_miss,
+    .dv_destroy_flow = mlx5_glue_dv_destroy_flow,
+    .dv_destroy_flow_matcher = mlx5_glue_dv_destroy_flow_matcher,
+    .dv_destroy_flow_matcher_root = __mlx5_glue_dv_destroy_flow_matcher,
+    .dv_open_device = mlx5_glue_dv_open_device,
+    .devx_obj_create = mlx5_glue_devx_obj_create,
         devx_obj->obj = devx_obj_create -> mlx5dv_devx_obj_create -> libibverbs-dev api
-	.devx_obj_destroy = mlx5_glue_devx_obj_destroy,
-	.devx_obj_query = mlx5_glue_devx_obj_query,
-	.devx_obj_modify = mlx5_glue_devx_obj_modify,
-	.devx_general_cmd = mlx5_glue_devx_general_cmd,
-	.devx_create_cmd_comp = mlx5_glue_devx_create_cmd_comp,
-	.devx_destroy_cmd_comp = mlx5_glue_devx_destroy_cmd_comp,
-	.devx_obj_query_async = mlx5_glue_devx_obj_query_async,
-	.devx_get_async_cmd_comp = mlx5_glue_devx_get_async_cmd_comp,
-	.devx_umem_reg = mlx5_glue_devx_umem_reg,
-	.devx_umem_dereg = mlx5_glue_devx_umem_dereg,
-	.devx_qp_query = mlx5_glue_devx_qp_query,
-	.devx_wq_query = mlx5_glue_devx_wq_query,
-	.devx_port_query = mlx5_glue_devx_port_query,
-	.dr_dump_domain = mlx5_glue_dr_dump_domain,
-	.dr_dump_rule = mlx5_glue_dr_dump_single_rule,
-	.dr_reclaim_domain_memory = mlx5_glue_dr_reclaim_domain_memory,
-	.dr_create_flow_action_sampler =
-		mlx5_glue_dr_create_flow_action_sampler,
-	.dr_create_flow_action_dest_array =
-		mlx5_glue_dr_action_create_dest_array,
-	.dr_allow_duplicate_rules = mlx5_glue_dr_allow_duplicate_rules,
-	.devx_query_eqn = mlx5_glue_devx_query_eqn,
-	.devx_create_event_channel = mlx5_glue_devx_create_event_channel,
+    .devx_obj_destroy = mlx5_glue_devx_obj_destroy,
+    .devx_obj_query = mlx5_glue_devx_obj_query,
+    .devx_obj_modify = mlx5_glue_devx_obj_modify,
+    .devx_general_cmd = mlx5_glue_devx_general_cmd,
+    .devx_create_cmd_comp = mlx5_glue_devx_create_cmd_comp,
+    .devx_destroy_cmd_comp = mlx5_glue_devx_destroy_cmd_comp,
+    .devx_obj_query_async = mlx5_glue_devx_obj_query_async,
+    .devx_get_async_cmd_comp = mlx5_glue_devx_get_async_cmd_comp,
+    .devx_umem_reg = mlx5_glue_devx_umem_reg,
+    .devx_umem_dereg = mlx5_glue_devx_umem_dereg,
+    .devx_qp_query = mlx5_glue_devx_qp_query,
+    .devx_wq_query = mlx5_glue_devx_wq_query,
+    .devx_port_query = mlx5_glue_devx_port_query,
+    .dr_dump_domain = mlx5_glue_dr_dump_domain,
+    .dr_dump_rule = mlx5_glue_dr_dump_single_rule,
+    .dr_reclaim_domain_memory = mlx5_glue_dr_reclaim_domain_memory,
+    .dr_create_flow_action_sampler =
+        mlx5_glue_dr_create_flow_action_sampler,
+    .dr_create_flow_action_dest_array =
+        mlx5_glue_dr_action_create_dest_array,
+    .dr_allow_duplicate_rules = mlx5_glue_dr_allow_duplicate_rules,
+    .devx_query_eqn = mlx5_glue_devx_query_eqn,
+    .devx_create_event_channel = mlx5_glue_devx_create_event_channel,
         mlx5dv_devx_create_event_channel(ctx, flags)
-	.devx_destroy_event_channel = mlx5_glue_devx_destroy_event_channel,
-	.devx_subscribe_devx_event = mlx5_glue_devx_subscribe_devx_event,
-	.devx_subscribe_devx_event_fd = mlx5_glue_devx_subscribe_devx_event_fd,
-	.devx_get_event = mlx5_glue_devx_get_event,
-	.devx_alloc_uar = mlx5_glue_devx_alloc_uar,
-	.devx_free_uar = mlx5_glue_devx_free_uar,
-	.dv_alloc_var = mlx5_glue_dv_alloc_var, -> var: Virtio access region(VAR)
+    .devx_destroy_event_channel = mlx5_glue_devx_destroy_event_channel,
+    .devx_subscribe_devx_event = mlx5_glue_devx_subscribe_devx_event,
+    .devx_subscribe_devx_event_fd = mlx5_glue_devx_subscribe_devx_event_fd,
+    .devx_get_event = mlx5_glue_devx_get_event,
+    .devx_alloc_uar = mlx5_glue_devx_alloc_uar,
+    .devx_free_uar = mlx5_glue_devx_free_uar,
+    .dv_alloc_var = mlx5_glue_dv_alloc_var, -> var: Virtio access region(VAR)
         mlx5dv_alloc_var(context, flags)
-	.dv_free_var = mlx5_glue_dv_free_var,
-	.dv_alloc_pp = mlx5_glue_dv_alloc_pp,
-	.dv_free_pp = mlx5_glue_dv_free_pp,
-	.dr_create_flow_action_send_to_kernel =
-		mlx5_glue_dr_create_flow_action_send_to_kernel,
+    .dv_free_var = mlx5_glue_dv_free_var,
+    .dv_alloc_pp = mlx5_glue_dv_alloc_pp,
+    .dv_free_pp = mlx5_glue_dv_free_pp,
+    .dr_create_flow_action_send_to_kernel =
+        mlx5_glue_dr_create_flow_action_send_to_kernel,
 };
 
 
@@ -1665,7 +1702,7 @@ RTE_LCORE_FOREACH_WORKER
                 epoll_ctl
 lcore_eda2dpdk_tx(mbuf_pool) -> tx
     RTE_ETH_FOREACH_DEV(port)
-        init_server(&listenfd, &epollfd, dut2dpi_addr) -> 
+        init_server(&listenfd, &epollfd, dut2dpi_addr) ->
     for (;;)
         RTE_ETH_FOREACH_DEV(port)
             deal_eda2dpdk_msg(listenfd, epollfd, bufs, mbuf_pool) -> deal_eda_dpdk_msg
@@ -1903,11 +1940,11 @@ rte_ctrl_thread_create
 
 
 struct rte_vhost_user_extern_ops g_extern_vhost_ops = {
-	.pre_msg_handle = extern_vhost_pre_msg_handler,
+    .pre_msg_handle = extern_vhost_pre_msg_handler,
         rte_vhost_get_ifname(vid, path, PATH_MAX)
         ctrlr = vhost_blk_ctrlr_find(path)
         switch ((int)msg->request)
-	.post_msg_handle = extern_vhost_post_msg_handler,
+    .post_msg_handle = extern_vhost_post_msg_handler,
 };
 
 
@@ -2040,7 +2077,7 @@ examples/vhost_blk/vhost_blk.c -> main
 
 
 struct rte_vhost_device_ops vhost_blk_device_ops = {
-	.new_device =  new_device,
+    .new_device =  new_device,
         ret = rte_vhost_get_ifname(vid, path, PATH_MAX)
         ctrlr = vhost_blk_ctrlr_find(path)
         rte_vhost_get_negotiated_features
@@ -2096,8 +2133,8 @@ struct rte_vhost_device_ops vhost_blk_device_ops = {
                             rte_vhost_set_inflight_desc_split
                             process_blk_task
         ctrlr->started = 1
-	.destroy_device = destroy_device,
-	.new_connection = new_connection,
+    .destroy_device = destroy_device,
+    .new_connection = new_connection,
         vhost_session_install_rte_compat_hooks
 };
 
@@ -2109,36 +2146,36 @@ vhost_kernel_get_features
 
 
 struct virtio_user_backend_ops virtio_ops_vdpa = {
-	.setup = vhost_vdpa_setup,
-	.destroy = vhost_vdpa_destroy,
-	.get_backend_features = vhost_vdpa_get_backend_features,
-	.set_owner = vhost_vdpa_set_owner,
-	.get_features = vhost_vdpa_get_features,
+    .setup = vhost_vdpa_setup,
+    .destroy = vhost_vdpa_destroy,
+    .get_backend_features = vhost_vdpa_get_backend_features,
+    .set_owner = vhost_vdpa_set_owner,
+    .get_features = vhost_vdpa_get_features,
         vhost_vdpa_ioctl(data->vhostfd, VHOST_GET_FEATURES, features) -> kernel -> .unlocked_ioctl	= vhost_vdpa_unlocked_ioctl
-	.set_features = vhost_vdpa_set_features,
+    .set_features = vhost_vdpa_set_features,
         vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_FEATURES, &features)
-	.set_memory_table = vhost_vdpa_set_memory_table,
+    .set_memory_table = vhost_vdpa_set_memory_table,
         vhost_vdpa_iotlb_batch_begin
             msg.type = VHOST_IOTLB_MSG_V2;
-	        msg.iotlb.type = VHOST_IOTLB_BATCH_BEGIN
+            msg.iotlb.type = VHOST_IOTLB_BATCH_BEGIN
             write(data->vhostfd, &msg, sizeof(msg)
         vhost_vdpa_dma_unmap
         rte_memseg_contig_walk_thread_unsafe(vhost_vdpa_map_contig, dev)
             vhost_vdpa_dma_map(dev, ms->addr, ms->iova, len)
         rte_memseg_walk_thread_unsafe(vhost_vdpa_map, dev)
         vhost_vdpa_iotlb_batch_end
-	.set_vring_num = vhost_vdpa_set_vring_num,
-	.set_vring_base = vhost_vdpa_set_vring_base, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_BASE, state)
-	.get_vring_base = vhost_vdpa_get_vring_base,
-	.set_vring_call = vhost_vdpa_set_vring_call, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_CALL, file)
-	.set_vring_kick = vhost_vdpa_set_vring_kick, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_KICK, file)
-	.set_vring_addr = vhost_vdpa_set_vring_addr, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_ADDR, addr)
-	.get_status = vhost_vdpa_get_status,
-	.set_status = vhost_vdpa_set_status,
-	.get_config = vhost_vdpa_get_config,
-	.set_config = vhost_vdpa_set_config,
-	.enable_qp = vhost_vdpa_enable_queue_pair,
-	.dma_map = vhost_vdpa_dma_map_batch,
+    .set_vring_num = vhost_vdpa_set_vring_num,
+    .set_vring_base = vhost_vdpa_set_vring_base, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_BASE, state)
+    .get_vring_base = vhost_vdpa_get_vring_base,
+    .set_vring_call = vhost_vdpa_set_vring_call, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_CALL, file)
+    .set_vring_kick = vhost_vdpa_set_vring_kick, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_KICK, file)
+    .set_vring_addr = vhost_vdpa_set_vring_addr, -> vhost_vdpa_ioctl(data->vhostfd, VHOST_SET_VRING_ADDR, addr)
+    .get_status = vhost_vdpa_get_status,
+    .set_status = vhost_vdpa_set_status,
+    .get_config = vhost_vdpa_get_config,
+    .set_config = vhost_vdpa_set_config,
+    .enable_qp = vhost_vdpa_enable_queue_pair,
+    .dma_map = vhost_vdpa_dma_map_batch,
         vhost_vdpa_iotlb_batch_begin
         vhost_vdpa_dma_map
             msg.type = VHOST_IOTLB_MSG_V2
@@ -2149,9 +2186,9 @@ struct virtio_user_backend_ops virtio_ops_vdpa = {
             msg.iotlb.perm = VHOST_ACCESS_RW;
             write(data->vhostfd, &msg, sizeof(msg)
         vhost_vdpa_iotlb_batch_end
-	.dma_unmap = vhost_vdpa_dma_unmap_batch,
-	.update_link_state = vhost_vdpa_update_link_state,
-	.get_intr_fd = vhost_vdpa_get_intr_fd,
+    .dma_unmap = vhost_vdpa_dma_unmap_batch,
+    .update_link_state = vhost_vdpa_update_link_state,
+    .get_intr_fd = vhost_vdpa_get_intr_fd,
 };
 
 
@@ -2248,10 +2285,10 @@ struct virtio_user_backend_ops virtio_ops_user = {
 dpdk/drivers/net/virtio/virtio_user_ethdev.c
 RTE_PMD_REGISTER_VDEV(net_virtio_user, virtio_user_driver);
 static struct rte_vdev_driver virtio_user_driver = {
-	.probe = virtio_user_pmd_probe,
-	.remove = virtio_user_pmd_remove,
-	.dma_map = virtio_user_pmd_dma_map,
-	.dma_unmap = virtio_user_pmd_dma_unmap,
+    .probe = virtio_user_pmd_probe,
+    .remove = virtio_user_pmd_remove,
+    .dma_map = virtio_user_pmd_dma_map,
+    .dma_unmap = virtio_user_pmd_dma_unmap,
 };
 virtio_user_pmd_probe
     virtio_user_dev_setup
@@ -2270,24 +2307,24 @@ virtio_user_pmd_probe
 
 
 struct virtio_user_backend_ops virtio_ops_kernel = {
-	.setup = vhost_kernel_setup,
-	.destroy = vhost_kernel_destroy,
-	.get_backend_features = vhost_kernel_get_backend_features,
-	.set_owner = vhost_kernel_set_owner,
-	.get_features = vhost_kernel_get_features,
-	.set_features = vhost_kernel_set_features,
-	.set_memory_table = vhost_kernel_set_memory_table,
-	.set_vring_num = vhost_kernel_set_vring_num,
-	.set_vring_base = vhost_kernel_set_vring_base,
-	.get_vring_base = vhost_kernel_get_vring_base,
-	.set_vring_call = vhost_kernel_set_vring_call,
-	.set_vring_kick = vhost_kernel_set_vring_kick,
-	.set_vring_addr = vhost_kernel_set_vring_addr,
-	.get_status = vhost_kernel_get_status,
-	.set_status = vhost_kernel_set_status,
-	.enable_qp = vhost_kernel_enable_queue_pair,
-	.update_link_state = vhost_kernel_update_link_state,
-	.get_intr_fd = vhost_kernel_get_intr_fd,
+    .setup = vhost_kernel_setup,
+    .destroy = vhost_kernel_destroy,
+    .get_backend_features = vhost_kernel_get_backend_features,
+    .set_owner = vhost_kernel_set_owner,
+    .get_features = vhost_kernel_get_features,
+    .set_features = vhost_kernel_set_features,
+    .set_memory_table = vhost_kernel_set_memory_table,
+    .set_vring_num = vhost_kernel_set_vring_num,
+    .set_vring_base = vhost_kernel_set_vring_base,
+    .get_vring_base = vhost_kernel_get_vring_base,
+    .set_vring_call = vhost_kernel_set_vring_call,
+    .set_vring_kick = vhost_kernel_set_vring_kick,
+    .set_vring_addr = vhost_kernel_set_vring_addr,
+    .get_status = vhost_kernel_get_status,
+    .set_status = vhost_kernel_set_status,
+    .enable_qp = vhost_kernel_enable_queue_pair,
+    .update_link_state = vhost_kernel_update_link_state,
+    .get_intr_fd = vhost_kernel_get_intr_fd,
 };
 
 
@@ -2334,7 +2371,7 @@ VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_ADVISE, vhost_user_set_postcopy_advise
 VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_LISTEN, vhost_user_set_postcopy_listen, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_END, vhost_user_postcopy_end, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_INFLIGHT_FD, vhost_user_get_inflight_fd, false) \
-    
+
 VHOST_MESSAGE_HANDLER(VHOST_USER_SET_INFLIGHT_FD, vhost_user_set_inflight_fd, true) \
     pervq_inflight_size = get_pervq_shm_size_packed(queue_size)
     or pervq_inflight_size = get_pervq_shm_size_split(queue_size)
@@ -2344,7 +2381,7 @@ VHOST_MESSAGE_HANDLER(VHOST_USER_SET_STATUS, vhost_user_set_status, false) \
 VHOST_MESSAGE_HANDLER(VHOST_USER_GET_STATUS, vhost_user_get_status, false)
 
 static vhost_message_handler_t vhost_message_handlers[] = {
-	VHOST_MESSAGE_HANDLERS
+    VHOST_MESSAGE_HANDLERS
 };
 
 
@@ -2493,10 +2530,10 @@ sfc_vdpa_pci_probe
 
 
 static struct rte_vdpa_dev_ops sfc_vdpa_ops = {
-	.get_queue_num = sfc_vdpa_get_queue_num,
-	.get_features = sfc_vdpa_get_features,
-	.get_protocol_features = sfc_vdpa_get_protocol_features,
-	.dev_conf = sfc_vdpa_dev_config, -> vdpa/sfc：支持设备配置和关闭，实现 vDPA ops dev_conf 和 dev_close 进行 DMA 映射、中断和 virtqueue 配置
+    .get_queue_num = sfc_vdpa_get_queue_num,
+    .get_features = sfc_vdpa_get_features,
+    .get_protocol_features = sfc_vdpa_get_protocol_features,
+    .dev_conf = sfc_vdpa_dev_config, -> vdpa/sfc：支持设备配置和关闭，实现 vDPA ops dev_conf 和 dev_close 进行 DMA 映射、中断和 virtqueue 配置
         sfc_vdpa_configure(ops_data)
             sfc_vdpa_dma_map(ops_data, true)
                 vfio_container_fd = sfc_vdpa_adapter_by_dev_handle(dev)->vfio_container_fd
@@ -2530,11 +2567,11 @@ static struct rte_vdpa_dev_ops sfc_vdpa_ops = {
             pthread_create(&ops_data->notify_tid, NULL, sfc_vdpa_notify_ctrl, ops_data)
                 rte_vhost_host_notifier_ctrl(vid, RTE_VHOST_QUEUE_ALL, true)
             ops_data->is_notify_thread_started = true
-	.dev_close = sfc_vdpa_dev_close,
-	.set_vring_state = sfc_vdpa_set_vring_state,
-	.set_features = sfc_vdpa_set_features,
-	.get_vfio_device_fd = sfc_vdpa_get_vfio_device_fd,
-	.get_notify_area = sfc_vdpa_get_notify_area,
+    .dev_close = sfc_vdpa_dev_close,
+    .set_vring_state = sfc_vdpa_set_vring_state,
+    .set_features = sfc_vdpa_set_features,
+    .get_vfio_device_fd = sfc_vdpa_get_vfio_device_fd,
+    .get_notify_area = sfc_vdpa_get_notify_area,
         *offset = reg.offset + (uint64_t)ops_data->vq_cxt[qid].doorbell
         pci_dev = sfc_vdpa_adapter_by_dev_handle(dev)->pdev
         doorbell = (uint8_t *)pci_dev->mem_resource[reg.index].addr + *offset
@@ -2542,17 +2579,17 @@ static struct rte_vdpa_dev_ops sfc_vdpa_ops = {
 };
 
 
-AMD Xilinx VDPA 在DPDK中的中断处理流程如下: 
-1. 设备通过vfio将irq_fd_ptr暴露到用户态: irq_fd_ptr[RTE_INTR_VEC_ZERO_OFFSET] = rte_intr_fd_get(pci_dev->intr_handle) 
-2. 将设备IRQ与callfd进行绑定: irq_fd_ptr[RTE_INTR_VEC_RXTX_OFFSET + i] = vring.callfd -> bind dev irq to callfd (vhost_target -> qemu) 
+AMD Xilinx VDPA 在DPDK中的中断处理流程如下:
+1. 设备通过vfio将irq_fd_ptr暴露到用户态: irq_fd_ptr[RTE_INTR_VEC_ZERO_OFFSET] = rte_intr_fd_get(pci_dev->intr_handle)
+2. 将设备IRQ与callfd进行绑定: irq_fd_ptr[RTE_INTR_VEC_RXTX_OFFSET + i] = vring.callfd -> bind dev irq to callfd (vhost_target -> qemu)
 3. DPDK通过ioctl将irq_set给了VFIO内核驱动: ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set)
-4. 硬件触发中断后, 通过VFIO中的eventfd_signal(trigger, 1)触发, 通过callfd通知到qemu, 流程如下: 
+4. 硬件触发中断后, 通过VFIO中的eventfd_signal(trigger, 1)触发, 通过callfd通知到qemu, 流程如下:
 hw_irq -> pci_dev->intr_handle -> irq_fd_ptr -> vring.callfd -> qemu handle this callfd and deal with this irq event (event_notifier_test_and_clear)
 5. qemu这边通过handle irq做中断处理
 
 
 static const efx_virtio_ops_t	__efx_virtio_rhead_ops = {
-	rhead_virtio_qstart,			/* evo_virtio_qstart */
+    rhead_virtio_qstart,			/* evo_virtio_qstart */
         req.emr_cmd = MC_CMD_VIRTIO_INIT_QUEUE
         efx_mcdi_execute(enp, &req)
             emtp->emt_execute(emtp->emt_context, emrp) -> sfc_efx_mcdi_execute
@@ -2566,56 +2603,56 @@ static const efx_virtio_ops_t	__efx_virtio_rhead_ops = {
                             efx_mcdi_read_response_header
                             efx_mcdi_finish_response
                 efx_mcdi_get_proxy_handle(mcdi->nic, emrp, &proxy_handle)
-	rhead_virtio_qstop,			/* evo_virtio_qstop */
-	rhead_virtio_get_doorbell_offset,	/* evo_get_doorbell_offset */
-	rhead_virtio_get_features,		/* evo_get_features */
-	rhead_virtio_verify_features,		/* evo_verify_features */
+    rhead_virtio_qstop,			/* evo_virtio_qstop */
+    rhead_virtio_get_doorbell_offset,	/* evo_get_doorbell_offset */
+    rhead_virtio_get_features,		/* evo_get_features */
+    rhead_virtio_verify_features,		/* evo_verify_features */
 };
 
 static const efx_phy_ops_t	__efx_phy_ef10_ops = {
-	ef10_phy_power,			/* epo_power */
-	NULL,				/* epo_reset */
-	ef10_phy_reconfigure,		/* epo_reconfigure */
-	ef10_phy_verify,		/* epo_verify */
-	ef10_phy_oui_get,		/* epo_oui_get */
-	ef10_phy_link_state_get,	/* epo_link_state_get */
+    ef10_phy_power,			/* epo_power */
+    NULL,				/* epo_reset */
+    ef10_phy_reconfigure,		/* epo_reconfigure */
+    ef10_phy_verify,		/* epo_verify */
+    ef10_phy_oui_get,		/* epo_oui_get */
+    ef10_phy_link_state_get,	/* epo_link_state_get */
 #if EFSYS_OPT_PHY_STATS
-	ef10_phy_stats_update,		/* epo_stats_update */
+    ef10_phy_stats_update,		/* epo_stats_update */
 #endif	/* EFSYS_OPT_PHY_STATS */
 #if EFSYS_OPT_BIST
-	ef10_bist_enable_offline,	/* epo_bist_enable_offline */
-	ef10_bist_start,		/* epo_bist_start */
-	ef10_bist_poll,			/* epo_bist_poll */
-	ef10_bist_stop,			/* epo_bist_stop */
+    ef10_bist_enable_offline,	/* epo_bist_enable_offline */
+    ef10_bist_start,		/* epo_bist_start */
+    ef10_bist_poll,			/* epo_bist_poll */
+    ef10_bist_stop,			/* epo_bist_stop */
 #endif	/* EFSYS_OPT_BIST */
 };
 
 
 
 static const struct sfc_efx_mcdi_ops sfc_vdpa_mcdi_ops = {
-	.dma_alloc	= sfc_vdpa_mcdi_dma_alloc,
+    .dma_alloc	= sfc_vdpa_mcdi_dma_alloc,
         mz = rte_memzone_reserve_aligned(mz_name, mcdi_buff_size, numa_node, RTE_MEMZONE_IOVA_CONTIG, PAGE_SIZE)
         rte_vfio_container_dma_map(sva->vfio_container_fd, (uint64_t)mz->addr, mcdi_iova, mcdi_buff_size)
-	.dma_free	= sfc_vdpa_mcdi_dma_free,
-	.sched_restart  = sfc_vdpa_mcdi_sched_restart,
-	.mgmt_evq_poll  = sfc_vdpa_mcdi_mgmt_evq_poll,
+    .dma_free	= sfc_vdpa_mcdi_dma_free,
+    .sched_restart  = sfc_vdpa_mcdi_sched_restart,
+    .mgmt_evq_poll  = sfc_vdpa_mcdi_mgmt_evq_poll,
 };
 
 static const efx_nic_ops_t	__efx_nic_medford_ops = {
-	ef10_nic_probe,			/* eno_probe */
-	medford_board_cfg,		/* eno_board_cfg */
-	ef10_nic_set_drv_limits,	/* eno_set_drv_limits */
-	ef10_nic_reset,			/* eno_reset */
-	ef10_nic_init,			/* eno_init */
-	ef10_nic_get_vi_pool,		/* eno_get_vi_pool */
-	ef10_nic_get_bar_region,	/* eno_get_bar_region */
-	ef10_nic_hw_unavailable,	/* eno_hw_unavailable */
-	ef10_nic_set_hw_unavailable,	/* eno_set_hw_unavailable */
+    ef10_nic_probe,			/* eno_probe */
+    medford_board_cfg,		/* eno_board_cfg */
+    ef10_nic_set_drv_limits,	/* eno_set_drv_limits */
+    ef10_nic_reset,			/* eno_reset */
+    ef10_nic_init,			/* eno_init */
+    ef10_nic_get_vi_pool,		/* eno_get_vi_pool */
+    ef10_nic_get_bar_region,	/* eno_get_bar_region */
+    ef10_nic_hw_unavailable,	/* eno_hw_unavailable */
+    ef10_nic_set_hw_unavailable,	/* eno_set_hw_unavailable */
 #if EFSYS_OPT_DIAG
-	ef10_nic_register_test,		/* eno_register_test */
+    ef10_nic_register_test,		/* eno_register_test */
 #endif	/* EFSYS_OPT_DIAG */
-	ef10_nic_fini,			/* eno_fini */
-	ef10_nic_unprobe,		/* eno_unprobe */
+    ef10_nic_fini,			/* eno_fini */
+    ef10_nic_unprobe,		/* eno_unprobe */
 };
 
 
@@ -2636,15 +2673,15 @@ cmdline_parse_inst_t cmd_create_vdpa_port -> cmd_create_vdpa_port_parsed
 
 
 static struct rte_vdpa_dev_ops ifcvf_net_ops = {
-	.get_queue_num = ifcvf_get_queue_num,
-	.get_features = ifcvf_get_vdpa_features,
-	.get_protocol_features = ifcvf_get_protocol_features,
-	.dev_conf = ifcvf_dev_config,
+    .get_queue_num = ifcvf_get_queue_num,
+    .get_features = ifcvf_get_vdpa_features,
+    .get_protocol_features = ifcvf_get_protocol_features,
+    .dev_conf = ifcvf_dev_config,
         rte_atomic32_set(&internal->dev_attached, 1)
         update_datapath(internal)
         rte_vhost_host_notifier_ctrl
-	.dev_close = ifcvf_dev_close,
-	.set_vring_state = ifcvf_set_vring_state,
+    .dev_close = ifcvf_dev_close,
+    .set_vring_state = ifcvf_set_vring_state,
         hw->vring[vring].enable = enable
         unset_notify_relay(internal)
         vdpa_enable_vfio_intr(internal, false)
@@ -2674,23 +2711,23 @@ static struct rte_vdpa_dev_ops ifcvf_net_ops = {
                     IFCVF_WRITE_REG16(1, &cfg->queue_enable)
         setup_notify_relay(internal)
         rte_vhost_host_notifier_ctrl(vid, vring, enable)
-	.set_features = ifcvf_set_features,
-	.migration_done = NULL,
-	.get_vfio_group_fd = ifcvf_get_vfio_group_fd,
+    .set_features = ifcvf_set_features,
+    .migration_done = NULL,
+    .get_vfio_group_fd = ifcvf_get_vfio_group_fd,
         list->internal->vfio_group_fd
-	.get_vfio_device_fd = ifcvf_get_vfio_device_fd,
+    .get_vfio_device_fd = ifcvf_get_vfio_device_fd,
         list->internal->vfio_dev_fd
-	.get_notify_area = ifcvf_get_notify_area,
-	.get_dev_type = ifcvf_get_device_type,
+    .get_notify_area = ifcvf_get_notify_area,
+    .get_dev_type = ifcvf_get_device_type,
 };
 
 
 static struct rte_vdpa_dev_ops ifcvf_blk_ops = {
-	.get_queue_num = ifcvf_get_queue_num,
+    .get_queue_num = ifcvf_get_queue_num,
         *queue_num = list->internal->max_queues
-	.get_features = ifcvf_get_vdpa_features,
+    .get_features = ifcvf_get_vdpa_features,
         *features = list->internal->features
-	.set_features = ifcvf_set_features,
+    .set_features = ifcvf_set_features,
         if (internal->sw_lm) -> net/ifc：支持 SW 辅助 VDPA 实时迁移, 在 SW 辅助实时迁移模式下，驱动程序将停止设备并设置一个中介 virtio 环来中继 virtio 驱动程序和 VDPA 设备之间的通信。此数据路径干预将允许 SW 帮助客户机记录实时迁移的脏页。此 SW 回退是事件驱动的中继线程，因此当网络吞吐量较低时，此 SW 回退将占用很少的 CPU 资源，但当吞吐量上升时，中继线程的 CPU 使用率将相应上升。用户在选择实时迁移支持模式时需要考虑所有因素，包括 CPU 使用率、客户机性能下降等。
             ifcvf_sw_fallback_switchover(internal)
                 stop the direct IO data path
@@ -2728,21 +2765,21 @@ static struct rte_vdpa_dev_ops ifcvf_blk_ops = {
             rte_vhost_get_log_base(vid, &log_base, &log_size)
             rte_vfio_container_dma_map(internal->vfio_container_fd, log_base, IFCVF_LOG_BASE, log_size)
             ifcvf_enable_logging(&internal->hw, IFCVF_LOG_BASE, log_size)
-	.get_protocol_features = ifcvf_blk_get_protocol_features,
+    .get_protocol_features = ifcvf_blk_get_protocol_features,
         *features |= VDPA_BLK_PROTOCOL_FEATURES
-	.dev_conf = ifcvf_dev_config,
-	.dev_close = ifcvf_dev_close,
-	.set_vring_state = ifcvf_set_vring_state,
-	.migration_done = NULL,
-	.get_vfio_group_fd = ifcvf_get_vfio_group_fd,
-	.get_vfio_device_fd = ifcvf_get_vfio_device_fd,
-	.get_notify_area = ifcvf_get_notify_area,
+    .dev_conf = ifcvf_dev_config,
+    .dev_close = ifcvf_dev_close,
+    .set_vring_state = ifcvf_set_vring_state,
+    .migration_done = NULL,
+    .get_vfio_group_fd = ifcvf_get_vfio_group_fd,
+    .get_vfio_device_fd = ifcvf_get_vfio_device_fd,
+    .get_notify_area = ifcvf_get_notify_area,
         ret = ioctl(internal->vfio_dev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg)
         *offset = ifcvf_get_queue_notify_off(&internal->hw, qid) + reg.offset
             return (u8 *)hw->notify_addr[qid] - (u8 *)hw->mem_resource[hw->notify_region].addr
         *size = 0x1000
-	.get_config = ifcvf_blk_get_config,
-	.get_dev_type = ifcvf_get_device_type,
+    .get_config = ifcvf_blk_get_config,
+    .get_dev_type = ifcvf_get_device_type,
         if (internal->hw.device_type == IFCVF_BLK)
             *type = RTE_VHOST_VDPA_DEVICE_TYPE_BLK
 };
@@ -2751,10 +2788,10 @@ static struct rte_vdpa_dev_ops ifcvf_blk_ops = {
 intel, vdpa, ifcvf_vdpa.c -> net/ifcvf：添加 ifcvf vDPA 驱动程序，IFCVF vDPA（vhost 数据路径加速）驱动程序为 Intel FPGA 100G VF（IFCVF）提供支持。IFCVF 的数据路径与 virtio 环兼容，它作为 HW vhost 后端工作，可以通过 DMA 直接向/从 virtio 发送/接收数据包。不同的 VF 设备服务于位于不同 VM 中的不同 virtio 前端，因此每个 VF 都需要有自己的 DMA 地址转换服务。在驱动程序探测期间，将创建一个新容器，使用此容器 vDPA 驱动程序可以使用 VM 的内存区域信息对 DMA 重映射表进行编程。实现的关键 vDPA 驱动程序操作：- ifcvf_dev_config：使用 vhost lib 提供的 virtio 信息启用 VF 数据路径，包括 IOMMU 编程以启用 VF DMA 到 VM 的内存，VFIO 中断设置以将 HW 中断路由到 virtio 驱动程序，创建通知中继线程以将 virtio 驱动程序的踢动转换为 MMIO 写入 HW，HW 队列配置。- ifcvf_dev_close：撤销 ifcvf_dev_config 中的所有设置。实时迁移功能由 IFCVF 支持，此驱动程序启用此功能。对于脏页日志记录，VF 有助于记录数据包缓冲区写入，驱动程序有助于在设备停止时将使用的环设为脏的。由于 vDPA 驱动程序需要设置 MSI-X 向量来中断客户机，因此目前仅支持 vfio-pci
 RTE_PMD_REGISTER_PCI(net_ifcvf, rte_ifcvf_vdpa)
 static struct rte_pci_driver rte_ifcvf_vdpa = {
-	.id_table = pci_id_ifcvf_map,
-	.drv_flags = 0,
-	.probe = ifcvf_pci_probe,
-	.remove = ifcvf_pci_remove,
+    .id_table = pci_id_ifcvf_map,
+    .drv_flags = 0,
+    .probe = ifcvf_pci_probe,
+    .remove = ifcvf_pci_remove,
 };
 ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_device *pci_dev)
     kvlist = rte_kvargs_parse(pci_dev->device.devargs->args, ifcvf_valid_arguments)
@@ -2799,8 +2836,8 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_devi
                         pci_vfio_setup_interrupts
                     pci_vfio_enable_notifier(dev, vfio_dev_fd)
         internal->hw.mem_resource[i].addr = internal->pdev->mem_resource[i].addr;
-		internal->hw.mem_resource[i].phys_addr = internal->pdev->mem_resource[i].phys_addr;
-		internal->hw.mem_resource[i].len = internal->pdev->mem_resource[i].len;
+        internal->hw.mem_resource[i].phys_addr = internal->pdev->mem_resource[i].phys_addr;
+        internal->hw.mem_resource[i].len = internal->pdev->mem_resource[i].len;
     ifcvf_init_hw(&internal->hw, internal->pdev)
         ret = PCI_READ_CONFIG_BYTE(dev, &pos, PCI_CAPABILITY_LIST)
         PCI_READ_CONFIG_RANGE(dev, (u32 *)&cap, sizeof(cap), pos)
@@ -2947,16 +2984,16 @@ extern_vhost_post_msg_handler(int vid, void *_msg)
 
 
 static __rte_used cmdline_parse_ctx_t main_ctx[] = {
-	&cmd_help,
-	&cmd_list,
-	&cmd_create,
-	&cmd_stats,
-	&cmd_quit,
-	NULL
+    &cmd_help,
+    &cmd_list,
+    &cmd_create,
+    &cmd_stats,
+    &cmd_quit,
+    NULL
 };
 
 static cmdline_parse_inst_t cmd_list = {
-	.f = cmd_list_parsed,
+    .f = cmd_list_parsed,
         RTE_DEV_FOREACH(dev, "class=vdpa", &dev_iter)
             rte_vdpa_find_device_by_name
                 __vdpa_find_device_by_name
@@ -2964,28 +3001,28 @@ static cmdline_parse_inst_t cmd_list = {
         rte_vdpa_get_queue_num
         rte_vdpa_get_features
         cmdline_printf(cl, "%s\t\t%" PRIu32 "\t\t0x%" PRIx64 "\n", rte_dev_name(dev), queue_num, features)
-	.data = NULL,
-	.help_str = "list all available vdpa devices",
-	.tokens = {
-		(void *)&cmd_list_list_tok,
-		NULL,
-	}
+    .data = NULL,
+    .help_str = "list all available vdpa devices",
+    .tokens = {
+        (void *)&cmd_list_list_tok,
+        NULL,
+    }
 };
 
 static cmdline_parse_inst_t cmd_create = {
-	.f = cmd_create_parsed,
+    .f = cmd_create_parsed,
         rte_strscpy(vports[devcnt].ifname, res->socket_path, MAX_PATH_LEN) -> devcnt auto ++
         dev = rte_vdpa_find_device_by_name(res->bdf) -> find vdpa dev by bus device function addr
             __vdpa_find_device_by_name(name)
         start_vdpa(&vports[devcnt])
-	.data = NULL,
-	.help_str = "create a new vdpa port",
-	.tokens = {
-		(void *)&cmd_create_create_tok,
-		(void *)&cmd_create_socket_path_tok,
-		(void *)&cmd_create_bdf_tok,
-		NULL,
-	}
+    .data = NULL,
+    .help_str = "create a new vdpa port",
+    .tokens = {
+        (void *)&cmd_create_create_tok,
+        (void *)&cmd_create_socket_path_tok,
+        (void *)&cmd_create_bdf_tok,
+        NULL,
+    }
 };
 
 
@@ -3015,7 +3052,7 @@ DPDK                               V
                       rte_vhost_driver_register
                         (const char *path, uint64_t flags)
                                    |
-             -----------------------------------------------                     
+             -----------------------------------------------
              |                                             |
              V                                             |
 vhost_user_create_server                                   |
@@ -3068,41 +3105,41 @@ rte_eal_intr_init
 
 
 static const struct eth_dev_ops virtio_eth_dev_ops = {
-	.dev_configure           = virtio_dev_configure,
-	.dev_start               = virtio_dev_start,
-	.dev_stop                = virtio_dev_stop,
-	.dev_close               = virtio_dev_close,
-	.promiscuous_enable      = virtio_dev_promiscuous_enable,
-	.promiscuous_disable     = virtio_dev_promiscuous_disable,
-	.allmulticast_enable     = virtio_dev_allmulticast_enable,
-	.allmulticast_disable    = virtio_dev_allmulticast_disable,
-	.mtu_set                 = virtio_mtu_set,
-	.dev_infos_get           = virtio_dev_info_get,
-	.stats_get               = virtio_dev_stats_get,
-	.xstats_get              = virtio_dev_xstats_get,
-	.xstats_get_names        = virtio_dev_xstats_get_names,
-	.stats_reset             = virtio_dev_stats_reset,
-	.xstats_reset            = virtio_dev_stats_reset,
-	.link_update             = virtio_dev_link_update,
-	.vlan_offload_set        = virtio_dev_vlan_offload_set,
-	.rx_queue_setup          = virtio_dev_rx_queue_setup,
-	.rx_queue_intr_enable    = virtio_dev_rx_queue_intr_enable,
+    .dev_configure           = virtio_dev_configure,
+    .dev_start               = virtio_dev_start,
+    .dev_stop                = virtio_dev_stop,
+    .dev_close               = virtio_dev_close,
+    .promiscuous_enable      = virtio_dev_promiscuous_enable,
+    .promiscuous_disable     = virtio_dev_promiscuous_disable,
+    .allmulticast_enable     = virtio_dev_allmulticast_enable,
+    .allmulticast_disable    = virtio_dev_allmulticast_disable,
+    .mtu_set                 = virtio_mtu_set,
+    .dev_infos_get           = virtio_dev_info_get,
+    .stats_get               = virtio_dev_stats_get,
+    .xstats_get              = virtio_dev_xstats_get,
+    .xstats_get_names        = virtio_dev_xstats_get_names,
+    .stats_reset             = virtio_dev_stats_reset,
+    .xstats_reset            = virtio_dev_stats_reset,
+    .link_update             = virtio_dev_link_update,
+    .vlan_offload_set        = virtio_dev_vlan_offload_set,
+    .rx_queue_setup          = virtio_dev_rx_queue_setup,
+    .rx_queue_intr_enable    = virtio_dev_rx_queue_intr_enable,
         virtqueue_enable_intr
             virtqueue_enable_intr_split
                 vq->vq_split.ring.avail->flags &= (~VRING_AVAIL_F_NO_INTERRUPT)
-	.rx_queue_intr_disable   = virtio_dev_rx_queue_intr_disable,
-	.tx_queue_setup          = virtio_dev_tx_queue_setup,
-	.rss_hash_update         = virtio_dev_rss_hash_update,
-	.rss_hash_conf_get       = virtio_dev_rss_hash_conf_get,
-	.reta_update             = virtio_dev_rss_reta_update,
-	.reta_query              = virtio_dev_rss_reta_query,
-	/* collect stats per queue */
-	.queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set,
-	.vlan_filter_set         = virtio_vlan_filter_set,
-	.mac_addr_add            = virtio_mac_addr_add,
-	.mac_addr_remove         = virtio_mac_addr_remove,
-	.mac_addr_set            = virtio_mac_addr_set,
-	.get_monitor_addr        = virtio_get_monitor_addr,
+    .rx_queue_intr_disable   = virtio_dev_rx_queue_intr_disable,
+    .tx_queue_setup          = virtio_dev_tx_queue_setup,
+    .rss_hash_update         = virtio_dev_rss_hash_update,
+    .rss_hash_conf_get       = virtio_dev_rss_hash_conf_get,
+    .reta_update             = virtio_dev_rss_reta_update,
+    .reta_query              = virtio_dev_rss_reta_query,
+    /* collect stats per queue */
+    .queue_stats_mapping_set = virtio_dev_queue_stats_mapping_set,
+    .vlan_filter_set         = virtio_vlan_filter_set,
+    .mac_addr_add            = virtio_mac_addr_add,
+    .mac_addr_remove         = virtio_mac_addr_remove,
+    .mac_addr_set            = virtio_mac_addr_set,
+    .get_monitor_addr        = virtio_get_monitor_addr,
 };
 
 
@@ -3117,77 +3154,77 @@ mlx5_dev_interrupt_handler_devx
 
 
 const struct eth_dev_ops mlx5_dev_ops = {
-	.dev_configure = mlx5_dev_configure,
-	.dev_start = mlx5_dev_start,
+    .dev_configure = mlx5_dev_configure,
+    .dev_start = mlx5_dev_start,
         mlx5_txpp_start
         mlx5_txpp_create
             mlx5_txpp_start_service
                 sh->txpp.intr_handle = mlx5_os_interrupt_handler_create(RTE_INTR_INSTANCE_F_SHARED, false, fd, mlx5_txpp_interrupt_handler, sh)
-	.dev_stop = mlx5_dev_stop,
-	.dev_set_link_down = mlx5_set_link_down,
-	.dev_set_link_up = mlx5_set_link_up,
-	.dev_close = mlx5_dev_close,
-	.promiscuous_enable = mlx5_promiscuous_enable,
-	.promiscuous_disable = mlx5_promiscuous_disable,
-	.allmulticast_enable = mlx5_allmulticast_enable,
-	.allmulticast_disable = mlx5_allmulticast_disable,
-	.link_update = mlx5_link_update,
-	.stats_get = mlx5_stats_get,
-	.stats_reset = mlx5_stats_reset,
-	.xstats_get = mlx5_xstats_get,
-	.xstats_reset = mlx5_xstats_reset,
-	.xstats_get_names = mlx5_xstats_get_names,
-	.fw_version_get = mlx5_fw_version_get,
-	.dev_infos_get = mlx5_dev_infos_get,
-	.representor_info_get = mlx5_representor_info_get,
-	.read_clock = mlx5_txpp_read_clock,
-	.dev_supported_ptypes_get = mlx5_dev_supported_ptypes_get,
-	.vlan_filter_set = mlx5_vlan_filter_set,
-	.rx_queue_setup = mlx5_rx_queue_setup,
-	.rx_queue_avail_thresh_set = mlx5_rx_queue_lwm_set,
-	.rx_queue_avail_thresh_query = mlx5_rx_queue_lwm_query,
-	.rx_hairpin_queue_setup = mlx5_rx_hairpin_queue_setup,
-	.tx_queue_setup = mlx5_tx_queue_setup,
-	.tx_hairpin_queue_setup = mlx5_tx_hairpin_queue_setup,
-	.rx_queue_release = mlx5_rx_queue_release,
-	.tx_queue_release = mlx5_tx_queue_release,
-	.rx_queue_start = mlx5_rx_queue_start,
-	.rx_queue_stop = mlx5_rx_queue_stop,
-	.tx_queue_start = mlx5_tx_queue_start,
-	.tx_queue_stop = mlx5_tx_queue_stop,
-	.flow_ctrl_get = mlx5_dev_get_flow_ctrl,
-	.flow_ctrl_set = mlx5_dev_set_flow_ctrl,
-	.mac_addr_remove = mlx5_mac_addr_remove,
-	.mac_addr_add = mlx5_mac_addr_add,
-	.mac_addr_set = mlx5_mac_addr_set,
-	.set_mc_addr_list = mlx5_set_mc_addr_list,
-	.mtu_set = mlx5_dev_set_mtu,
-	.vlan_strip_queue_set = mlx5_vlan_strip_queue_set,
-	.vlan_offload_set = mlx5_vlan_offload_set,
-	.reta_update = mlx5_dev_rss_reta_update,
-	.reta_query = mlx5_dev_rss_reta_query,
-	.rss_hash_update = mlx5_rss_hash_update,
-	.rss_hash_conf_get = mlx5_rss_hash_conf_get,
-	.flow_ops_get = mlx5_flow_ops_get,
-	.rxq_info_get = mlx5_rxq_info_get,
-	.txq_info_get = mlx5_txq_info_get,
-	.rx_burst_mode_get = mlx5_rx_burst_mode_get,
-	.tx_burst_mode_get = mlx5_tx_burst_mode_get,
-	.rx_queue_intr_enable = mlx5_rx_intr_enable,
-	.rx_queue_intr_disable = mlx5_rx_intr_disable,
-	.is_removed = mlx5_is_removed,
-	.udp_tunnel_port_add  = mlx5_udp_tunnel_port_add,
-	.get_module_info = mlx5_get_module_info,
-	.get_module_eeprom = mlx5_get_module_eeprom,
-	.hairpin_cap_get = mlx5_hairpin_cap_get,
-	.mtr_ops_get = mlx5_flow_meter_ops_get,
-	.hairpin_bind = mlx5_hairpin_bind,
-	.hairpin_unbind = mlx5_hairpin_unbind,
-	.hairpin_get_peer_ports = mlx5_hairpin_get_peer_ports,
-	.hairpin_queue_peer_update = mlx5_hairpin_queue_peer_update,
-	.hairpin_queue_peer_bind = mlx5_hairpin_queue_peer_bind,
-	.hairpin_queue_peer_unbind = mlx5_hairpin_queue_peer_unbind,
-	.get_monitor_addr = mlx5_get_monitor_addr,
+    .dev_stop = mlx5_dev_stop,
+    .dev_set_link_down = mlx5_set_link_down,
+    .dev_set_link_up = mlx5_set_link_up,
+    .dev_close = mlx5_dev_close,
+    .promiscuous_enable = mlx5_promiscuous_enable,
+    .promiscuous_disable = mlx5_promiscuous_disable,
+    .allmulticast_enable = mlx5_allmulticast_enable,
+    .allmulticast_disable = mlx5_allmulticast_disable,
+    .link_update = mlx5_link_update,
+    .stats_get = mlx5_stats_get,
+    .stats_reset = mlx5_stats_reset,
+    .xstats_get = mlx5_xstats_get,
+    .xstats_reset = mlx5_xstats_reset,
+    .xstats_get_names = mlx5_xstats_get_names,
+    .fw_version_get = mlx5_fw_version_get,
+    .dev_infos_get = mlx5_dev_infos_get,
+    .representor_info_get = mlx5_representor_info_get,
+    .read_clock = mlx5_txpp_read_clock,
+    .dev_supported_ptypes_get = mlx5_dev_supported_ptypes_get,
+    .vlan_filter_set = mlx5_vlan_filter_set,
+    .rx_queue_setup = mlx5_rx_queue_setup,
+    .rx_queue_avail_thresh_set = mlx5_rx_queue_lwm_set,
+    .rx_queue_avail_thresh_query = mlx5_rx_queue_lwm_query,
+    .rx_hairpin_queue_setup = mlx5_rx_hairpin_queue_setup,
+    .tx_queue_setup = mlx5_tx_queue_setup,
+    .tx_hairpin_queue_setup = mlx5_tx_hairpin_queue_setup,
+    .rx_queue_release = mlx5_rx_queue_release,
+    .tx_queue_release = mlx5_tx_queue_release,
+    .rx_queue_start = mlx5_rx_queue_start,
+    .rx_queue_stop = mlx5_rx_queue_stop,
+    .tx_queue_start = mlx5_tx_queue_start,
+    .tx_queue_stop = mlx5_tx_queue_stop,
+    .flow_ctrl_get = mlx5_dev_get_flow_ctrl,
+    .flow_ctrl_set = mlx5_dev_set_flow_ctrl,
+    .mac_addr_remove = mlx5_mac_addr_remove,
+    .mac_addr_add = mlx5_mac_addr_add,
+    .mac_addr_set = mlx5_mac_addr_set,
+    .set_mc_addr_list = mlx5_set_mc_addr_list,
+    .mtu_set = mlx5_dev_set_mtu,
+    .vlan_strip_queue_set = mlx5_vlan_strip_queue_set,
+    .vlan_offload_set = mlx5_vlan_offload_set,
+    .reta_update = mlx5_dev_rss_reta_update,
+    .reta_query = mlx5_dev_rss_reta_query,
+    .rss_hash_update = mlx5_rss_hash_update,
+    .rss_hash_conf_get = mlx5_rss_hash_conf_get,
+    .flow_ops_get = mlx5_flow_ops_get,
+    .rxq_info_get = mlx5_rxq_info_get,
+    .txq_info_get = mlx5_txq_info_get,
+    .rx_burst_mode_get = mlx5_rx_burst_mode_get,
+    .tx_burst_mode_get = mlx5_tx_burst_mode_get,
+    .rx_queue_intr_enable = mlx5_rx_intr_enable,
+    .rx_queue_intr_disable = mlx5_rx_intr_disable,
+    .is_removed = mlx5_is_removed,
+    .udp_tunnel_port_add  = mlx5_udp_tunnel_port_add,
+    .get_module_info = mlx5_get_module_info,
+    .get_module_eeprom = mlx5_get_module_eeprom,
+    .hairpin_cap_get = mlx5_hairpin_cap_get,
+    .mtr_ops_get = mlx5_flow_meter_ops_get,
+    .hairpin_bind = mlx5_hairpin_bind,
+    .hairpin_unbind = mlx5_hairpin_unbind,
+    .hairpin_get_peer_ports = mlx5_hairpin_get_peer_ports,
+    .hairpin_queue_peer_update = mlx5_hairpin_queue_peer_update,
+    .hairpin_queue_peer_bind = mlx5_hairpin_queue_peer_bind,
+    .hairpin_queue_peer_unbind = mlx5_hairpin_queue_peer_unbind,
+    .get_monitor_addr = mlx5_get_monitor_addr,
 };
 
 
@@ -3236,35 +3273,35 @@ cmdline_parse_inst_t cmd_create_vdpa_port
 
 
 static struct rte_vdpa_dev_ops ifcvf_net_ops = {
-	.get_queue_num = ifcvf_get_queue_num,
-	.get_features = ifcvf_get_vdpa_features,
-	.get_protocol_features = ifcvf_get_protocol_features,
-	.dev_conf = ifcvf_dev_config,
-	.dev_close = ifcvf_dev_close,
-	.set_vring_state = ifcvf_set_vring_state,
-	.set_features = ifcvf_set_features,
-	.migration_done = NULL,
-	.get_vfio_group_fd = ifcvf_get_vfio_group_fd,
-	.get_vfio_device_fd = ifcvf_get_vfio_device_fd,
-	.get_notify_area = ifcvf_get_notify_area,
-	.get_dev_type = ifcvf_get_device_type,
+    .get_queue_num = ifcvf_get_queue_num,
+    .get_features = ifcvf_get_vdpa_features,
+    .get_protocol_features = ifcvf_get_protocol_features,
+    .dev_conf = ifcvf_dev_config,
+    .dev_close = ifcvf_dev_close,
+    .set_vring_state = ifcvf_set_vring_state,
+    .set_features = ifcvf_set_features,
+    .migration_done = NULL,
+    .get_vfio_group_fd = ifcvf_get_vfio_group_fd,
+    .get_vfio_device_fd = ifcvf_get_vfio_device_fd,
+    .get_notify_area = ifcvf_get_notify_area,
+    .get_dev_type = ifcvf_get_device_type,
 };
 
 
 static struct rte_vdpa_dev_ops ifcvf_blk_ops = {
-	.get_queue_num = ifcvf_get_queue_num,
-	.get_features = ifcvf_get_vdpa_features,
-	.set_features = ifcvf_set_features,
-	.get_protocol_features = ifcvf_blk_get_protocol_features,
-	.dev_conf = ifcvf_dev_config,
-	.dev_close = ifcvf_dev_close,
-	.set_vring_state = ifcvf_set_vring_state,
-	.migration_done = NULL,
-	.get_vfio_group_fd = ifcvf_get_vfio_group_fd,
-	.get_vfio_device_fd = ifcvf_get_vfio_device_fd,
-	.get_notify_area = ifcvf_get_notify_area,
-	.get_config = ifcvf_blk_get_config,
-	.get_dev_type = ifcvf_get_device_type,
+    .get_queue_num = ifcvf_get_queue_num,
+    .get_features = ifcvf_get_vdpa_features,
+    .set_features = ifcvf_set_features,
+    .get_protocol_features = ifcvf_blk_get_protocol_features,
+    .dev_conf = ifcvf_dev_config,
+    .dev_close = ifcvf_dev_close,
+    .set_vring_state = ifcvf_set_vring_state,
+    .migration_done = NULL,
+    .get_vfio_group_fd = ifcvf_get_vfio_group_fd,
+    .get_vfio_device_fd = ifcvf_get_vfio_device_fd,
+    .get_notify_area = ifcvf_get_notify_area,
+    .get_config = ifcvf_blk_get_config,
+    .get_dev_type = ifcvf_get_device_type,
 };
 
 
@@ -3280,8 +3317,8 @@ ifcvf_pci_probe
         internal->vfio_container_fd = rte_vfio_container_create()
         internal->vfio_group_fd = rte_vfio_container_group_bind(internal->vfio_container_fd, iommu_group_num)
         internal->hw.mem_resource[i].addr = internal->pdev->mem_resource[i].addr;
-		internal->hw.mem_resource[i].phys_addr = internal->pdev->mem_resource[i].phys_addr;
-		internal->hw.mem_resource[i].len = internal->pdev->mem_resource[i].len;
+        internal->hw.mem_resource[i].phys_addr = internal->pdev->mem_resource[i].phys_addr;
+        internal->hw.mem_resource[i].len = internal->pdev->mem_resource[i].len;
     ifcvf_init_hw(&internal->hw, internal->pdev)
         ret = PCI_READ_CONFIG_BYTE(dev, &pos, PCI_CAPABILITY_LIST)
         PCI_READ_CONFIG_RANGE(dev, (u32 *)&cap, sizeof(cap), pos)
@@ -3340,5 +3377,113 @@ extern_vhost_post_msg_handler(int vid, void *_msg)
             spdk_interrupt_mode_is_enabled
                 backend->register_vq_interrupt(vsession, q)
         g_spdk_vhost_ops.new_device(vid)
+
+
+
+
+
+/* EAL defines */
+#define RTE_MAX_HEAPS 32
+#define RTE_MAX_MEMSEG_LISTS 128
+#define RTE_MAX_MEMSEG_PER_LIST 8192
+#define RTE_MAX_MEM_MB_PER_LIST 32768
+#define RTE_MAX_MEMSEG_PER_TYPE 32768
+#define RTE_MAX_MEM_MB_PER_TYPE 65536
+#define RTE_MAX_MEMZONE 2560
+#define RTE_MAX_TAILQ 32
+#define RTE_LOG_DP_LEVEL RTE_LOG_INFO
+#define RTE_BACKTRACE 1
+#define RTE_MAX_VFIO_CONTAINERS 64
+
+
+
+malloc_heap_find_external_seg
+    rte_memseg_list_walk_thread_unsafe(extseg_walk, &wa)
+
+
+
+
+malloc_heap_free
+    rte_spinlock_lock(&(heap->lock))
+    malloc_elem_free
+        elem = malloc_elem_join_adjacent_free(elem)
+        join_elem(elem, elem->next)
+            if (elem1->pad)
+                struct malloc_elem *inner = RTE_PTR_ADD(elem1, elem1->pad)
+                inner->size = elem1->size - elem1->pad
+        malloc_elem_free_list_insert(elem)
+        memset(ptr, MALLOC_POISON, data_len)
+
+
+rte_zmalloc_socket
+    rte_malloc_socket
+    malloc_elem_from_data
+
+
+static const struct eth_dev_ops ops = {
+	.dev_start              = tap_dev_start,
+	.dev_stop               = tap_dev_stop,
+	.dev_close              = tap_dev_close,
+	.dev_configure          = tap_dev_configure,
+	.dev_infos_get          = tap_dev_info,
+	.rx_queue_setup         = tap_rx_queue_setup,
+	.tx_queue_setup         = tap_tx_queue_setup,
+	.rx_queue_start         = tap_rx_queue_start,
+	.tx_queue_start         = tap_tx_queue_start,
+	.rx_queue_stop          = tap_rx_queue_stop,
+	.tx_queue_stop          = tap_tx_queue_stop,
+	.rx_queue_release       = tap_rx_queue_release,
+	.tx_queue_release       = tap_tx_queue_release,
+	.flow_ctrl_get          = tap_flow_ctrl_get,
+	.flow_ctrl_set          = tap_flow_ctrl_set,
+	.link_update            = tap_link_update,
+	.dev_set_link_up        = tap_link_set_up,
+	.dev_set_link_down      = tap_link_set_down,
+	.promiscuous_enable     = tap_promisc_enable,
+	.promiscuous_disable    = tap_promisc_disable,
+	.allmulticast_enable    = tap_allmulti_enable,
+	.allmulticast_disable   = tap_allmulti_disable,
+	.mac_addr_set           = tap_mac_set,
+	.mtu_set                = tap_mtu_set,
+	.set_mc_addr_list       = tap_set_mc_addr_list,
+	.stats_get              = tap_stats_get,
+	.stats_reset            = tap_stats_reset,
+	.dev_supported_ptypes_get = tap_dev_supported_ptypes_get,
+	.rss_hash_update        = tap_rss_hash_update,
+	.flow_ops_get           = tap_dev_flow_ops_get,
+};
+
+
+tap_dev_flow_ops_get
+	static const struct rte_flow_ops tap_flow_ops = {
+		.validate = tap_flow_validate,
+		.create = tap_flow_create,
+			priv_flow_process
+				rss_enable
+					tap_flow_bpf_rss_map_create
+						BPF_MAP_CREATE
+		.destroy = tap_flow_destroy,
+		.flush = tap_flow_flush,
+		.isolate = tap_flow_isolate,
+	};
+
+
+/* BPF commands types */
+enum bpf_cmd {
+	BPF_MAP_CREATE,
+	BPF_MAP_LOOKUP_ELEM,
+	BPF_MAP_UPDATE_ELEM,
+	BPF_MAP_DELETE_ELEM,
+	BPF_MAP_GET_NEXT_KEY,
+	BPF_PROG_LOAD,
+};
+
+
+
+RTE_PMD_REGISTER_VDEV(net_tap, pmd_tap_drv);
+RTE_PMD_REGISTER_VDEV(net_tun, pmd_tun_drv);
+rte_pmd_tun_probe
+	eth_dev_tap_create
+
 
 
