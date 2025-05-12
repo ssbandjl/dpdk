@@ -283,3 +283,37 @@ New Device /root/project/net/dpdk/build/examples/vhost.socket, Device ID 0
 Ctrlr Worker Thread start
 
 
+
+
+----------------------------------------------------------------------------------------
+vhost_blk_service vhost seq:
+EAL: rte_eal_init ../examples/vhost_blk_service/vhost_blk_service.c:160
+EAL: Detected CPU lcores: 28
+EAL: Detected NUMA nodes: 1
+EAL: Detected static linkage of DPDK
+EAL: Multi-process socket /var/run/dpdk/rte/mp_socket
+EAL: Selected IOVA mode 'PA'
+EAL: VFIO support initialized
+EAL: Probe PCI driver: mlx5_pci (15b3:1015) device: 0000:03:00.0 (socket 0)
+mlx5_net: No available register for sampler.
+EAL: Probe PCI driver: mlx5_pci (15b3:1015) device: 0000:03:00.1 (socket 0)
+mlx5_net: No available register for sampler.
+TELEMETRY: No legacy callbacks, legacy socket not created
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) vhost-user server: socket created, fd: 145
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) binding succeeded
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) new vhost user connection is 148
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) new device, handle is 0
+2024-07-25 19:02:19 0 new_connection() vhost_blk_service.c:95
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) read message VHOST_USER_GET_FEATURES
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) read message VHOST_USER_GET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) read message VHOST_USER_SET_PROTOCOL_FEATURES
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) negotiated Vhost-user protocol features: 0x11ebf
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) read message VHOST_USER_GET_QUEUE_NUM
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) read message VHOST_USER_SET_BACKEND_REQ_FD
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) read message VHOST_USER_SET_OWNER
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) read message VHOST_USER_GET_FEATURES
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) read message VHOST_USER_SET_VRING_CALL
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) vring call idx:0 file:150
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) read message VHOST_USER_SET_VRING_ERR
+VHOST_CONFIG: (/root/xb/project/net/v23/dpdk/build/examples/vhost_blk.socket) read message VHOST_USER_GET_CONFIG
+
