@@ -21,10 +21,12 @@
 #include <rte_eal.h>
 #include <rte_lcore.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 #include "eal_thread.h"
 
 /* require calling thread tid by gettid() */
+RTE_EXPORT_SYMBOL(rte_sys_gettid)
 int rte_sys_gettid(void)
 {
 	long lwpid;
@@ -32,18 +34,14 @@ int rte_sys_gettid(void)
 	return (int)lwpid;
 }
 
-int rte_thread_setname(pthread_t id, const char *name)
+RTE_EXPORT_SYMBOL(rte_thread_set_name)
+void rte_thread_set_name(rte_thread_t thread_id, const char *thread_name)
 {
-	/* this BSD function returns no error */
-	pthread_set_name_np(id, name);
-	return 0;
-}
+	char truncated[RTE_THREAD_NAME_SIZE];
+	const size_t truncatedsz = sizeof(truncated);
 
-int rte_thread_getname(pthread_t id, char *name, size_t len)
-{
-	RTE_SET_USED(id);
-	RTE_SET_USED(name);
-	RTE_SET_USED(len);
+	if (strlcpy(truncated, thread_name, truncatedsz) >= truncatedsz)
+		EAL_LOG(DEBUG, "Truncated thread name");
 
-	return -ENOTSUP;
+	pthread_set_name_np((pthread_t)thread_id.opaque_id, truncated);
 }

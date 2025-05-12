@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
 #include <rte_eal_paging.h>
@@ -86,6 +87,7 @@ mlx5_devx_get_hca_cap(void *ctx, uint32_t *in, uint32_t *out,
  * @return
  *   0 on success, a negative value otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_register_read)
 int
 mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id, uint32_t arg,
 			    uint32_t *data, uint32_t dw_cnt)
@@ -136,6 +138,7 @@ mlx5_devx_cmd_register_read(void *ctx, uint16_t reg_id, uint32_t arg,
  * @return
  *   0 on success, a negative value otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_register_write)
 int
 mlx5_devx_cmd_register_write(void *ctx, uint16_t reg_id, uint32_t arg,
 			     uint32_t *data, uint32_t dw_cnt)
@@ -176,6 +179,7 @@ mlx5_devx_cmd_register_write(void *ctx, uint16_t reg_id, uint32_t arg,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_flow_counter_alloc_general)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_flow_counter_alloc_general(void *ctx,
 		struct mlx5_devx_counter_attr *attr)
@@ -225,6 +229,7 @@ mlx5_devx_cmd_flow_counter_alloc_general(void *ctx,
  *   Pointer to counter object on success, a negative value otherwise and
  *   rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_flow_counter_alloc)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_flow_counter_alloc(void *ctx, uint32_t bulk_n_128)
 {
@@ -276,6 +281,7 @@ mlx5_devx_cmd_flow_counter_alloc(void *ctx, uint32_t bulk_n_128)
  * @return
  *   0 on success, a negative value otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_flow_counter_query)
 int
 mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_obj *dcs,
 				 int clear, uint32_t n_counters,
@@ -284,10 +290,9 @@ mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_obj *dcs,
 				 void *cmd_comp,
 				 uint64_t async_id)
 {
-	int out_len = MLX5_ST_SZ_BYTES(query_flow_counter_out) +
-			MLX5_ST_SZ_BYTES(traffic_counter);
-	uint32_t out[out_len];
+	uint32_t out[MLX5_ST_SZ_BYTES(query_flow_counter_out) + MLX5_ST_SZ_BYTES(traffic_counter)];
 	uint32_t in[MLX5_ST_SZ_DW(query_flow_counter_in)] = {0};
+	const int out_len = RTE_DIM(out);
 	void *stats;
 	int rc;
 
@@ -338,6 +343,7 @@ mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_obj *dcs,
  *   Pointer to Devx mkey on success, a negative value otherwise and rte_errno
  *   is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_mkey_create)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_mkey_create(void *ctx,
 			  struct mlx5_devx_mkey_attr *attr)
@@ -346,7 +352,7 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 	int klm_num = attr->klm_num;
 	int in_size_dw = MLX5_ST_SZ_DW(create_mkey_in) +
 		     (klm_num ? RTE_ALIGN(klm_num, 4) : 0) * MLX5_ST_SZ_DW(klm);
-	uint32_t in[in_size_dw];
+	uint32_t *in = alloca(sizeof(uint32_t) * in_size_dw);
 	uint32_t out[MLX5_ST_SZ_DW(create_mkey_out)] = {0};
 	void *mkc;
 	struct mlx5_devx_obj *mkey = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*mkey),
@@ -441,6 +447,7 @@ mlx5_devx_cmd_mkey_create(void *ctx,
  * @return
  *   0 on success, non-zero value otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_get_out_command_status)
 int
 mlx5_devx_get_out_command_status(void *out)
 {
@@ -467,6 +474,7 @@ mlx5_devx_get_out_command_status(void *out)
  * @return
  *   0 on success, a negative value otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_destroy)
 int
 mlx5_devx_cmd_destroy(struct mlx5_devx_obj *obj)
 {
@@ -518,8 +526,11 @@ mlx5_devx_cmd_query_nic_vport_context(void *ctx,
 	}
 	vctx = MLX5_ADDR_OF(query_nic_vport_context_out, out,
 			    nic_vport_context);
-	attr->vport_inline_mode = MLX5_GET(nic_vport_context, vctx,
-					   min_wqe_inline_mode);
+	if (attr->wqe_inline_mode == MLX5_CAP_INLINE_MODE_VPORT_CONTEXT)
+		attr->vport_inline_mode = MLX5_GET(nic_vport_context, vctx,
+						   min_wqe_inline_mode);
+	attr->system_image_guid = MLX5_GET64(nic_vport_context, vctx,
+					     system_image_guid);
 	return 0;
 }
 
@@ -543,7 +554,7 @@ mlx5_devx_cmd_query_hca_vdpa_attr(void *ctx,
 			MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION |
 			MLX5_HCA_CAP_OPMOD_GET_CUR);
 	if (!hcattr) {
-		RTE_LOG(DEBUG, PMD, "Failed to query devx VDPA capabilities");
+		DRV_LOG(DEBUG, "Failed to query devx VDPA capabilities");
 		vdpa_attr->valid = 0;
 	} else {
 		vdpa_attr->valid = 1;
@@ -605,9 +616,67 @@ mlx5_devx_cmd_query_hca_vdpa_attr(void *ctx,
 	}
 }
 
+/**
+ * Query match sample handle parameters.
+ *
+ * This command allows translating a field sample handle returned by either
+ * PARSE_GRAPH_FLOW_MATCH_SAMPLE or by GENEVE TLV OPTION object into values
+ * used for header modification or header matching/hashing.
+ *
+ * @param[in] ctx
+ *   Context used to create either GENEVE TLV option or FLEX PARSE GRAPH object.
+ * @param[in] sample_field_id
+ *   Field sample handle returned by either PARSE_GRAPH_FLOW_MATCH_SAMPLE
+ *   or by GENEVE TLV OPTION object.
+ * @param[out] attr
+ *   Pointer to match sample info attributes structure.
+ *
+ * @return
+ *   0 on success, a negative errno otherwise and rte_errno is set.
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_match_sample_info_query)
+int
+mlx5_devx_cmd_match_sample_info_query(void *ctx, uint32_t sample_field_id,
+				      struct mlx5_devx_match_sample_info_query_attr *attr)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	uint32_t out[MLX5_ST_SZ_DW(query_match_sample_info_out)] = {0};
+	uint32_t in[MLX5_ST_SZ_DW(query_match_sample_info_in)] = {0};
+	int rc;
+
+	MLX5_SET(query_match_sample_info_in, in, opcode,
+		 MLX5_CMD_OP_QUERY_MATCH_SAMPLE_INFO);
+	MLX5_SET(query_match_sample_info_in, in, op_mod, 0);
+	MLX5_SET(query_match_sample_info_in, in, sample_field_id,
+		 sample_field_id);
+	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
+	if (rc || MLX5_FW_STATUS(out)) {
+		DEVX_DRV_LOG(ERR, out, "query match sample info",
+			     "sample_field_id", sample_field_id);
+		return MLX5_DEVX_ERR_RC(rc);
+	}
+	attr->modify_field_id = MLX5_GET(query_match_sample_info_out, out,
+					 modify_field_id);
+	attr->sample_dw_data = MLX5_GET(query_match_sample_info_out, out,
+					field_format_select_dw);
+	attr->sample_dw_ok_bit = MLX5_GET(query_match_sample_info_out, out,
+					  ok_bit_format_select_dw);
+	attr->sample_dw_ok_bit_offset = MLX5_GET(query_match_sample_info_out,
+						 out, ok_bit_offset);
+	return 0;
+#else
+	(void)ctx;
+	(void)sample_field_id;
+	(void)attr;
+	return -ENOTSUP;
+#endif
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_query_parse_samples)
 int
 mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
-				  uint32_t ids[], uint32_t num)
+				  uint32_t *ids,
+				  uint32_t num, uint8_t *anchor)
 {
 	uint32_t in[MLX5_ST_SZ_DW(general_obj_in_cmd_hdr)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(create_flex_parser_out)] = {0};
@@ -636,7 +705,9 @@ mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 			(void *)flex_obj);
 		return -rte_errno;
 	}
-	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM; i++) {
+	if (anchor)
+		*anchor = MLX5_GET(parse_graph_flex, flex, head_anchor_id);
+	for (i = 0; i < MLX5_GRAPH_NODE_SAMPLE_NUM && idx < num; i++) {
 		void *s_off = (void *)((char *)sample + i *
 			      MLX5_ST_SZ_BYTES(parse_graph_flow_match_sample));
 		uint32_t en;
@@ -646,7 +717,7 @@ mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 		if (!en)
 			continue;
 		ids[idx++] = MLX5_GET(parse_graph_flow_match_sample, s_off,
-				  flow_match_sample_field_id);
+				      flow_match_sample_field_id);
 	}
 	if (num != idx) {
 		rte_errno = EINVAL;
@@ -656,6 +727,7 @@ mlx5_devx_cmd_query_parse_samples(struct mlx5_devx_obj *flex_obj,
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_flex_parser)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_flex_parser(void *ctx,
 				 struct mlx5_devx_graph_node_attr *data)
@@ -794,6 +866,11 @@ mlx5_devx_cmd_query_hca_parse_graph_node_cap
 					 max_num_arc_out);
 	attr->max_num_sample = MLX5_GET(parse_graph_node_cap, hcattr,
 					max_num_sample);
+	attr->parse_graph_anchor = MLX5_GET(parse_graph_node_cap, hcattr, parse_graph_anchor);
+	attr->sample_tunnel_inner2 = MLX5_GET(parse_graph_node_cap, hcattr,
+					      sample_tunnel_inner2);
+	attr->zero_size_supported = MLX5_GET(parse_graph_node_cap, hcattr,
+					     zero_size_supported);
 	attr->sample_id_in_out = MLX5_GET(parse_graph_node_cap, hcattr,
 					  sample_id_in_out);
 	attr->max_base_header_length = MLX5_GET(parse_graph_node_cap, hcattr,
@@ -851,6 +928,7 @@ mlx5_devx_query_pkt_integrity_match(void *hcattr)
  * @return
  *   0 on success, a negative value otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_query_hca_attr)
 int
 mlx5_devx_cmd_query_hca_attr(void *ctx,
 			     struct mlx5_hca_attr *attr)
@@ -859,6 +937,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	uint32_t out[MLX5_ST_SZ_DW(query_hca_cap_out)] = {0};
 	bool hca_cap_2_sup;
 	uint64_t general_obj_types_supported = 0;
+	uint64_t stc_action_type_127_64;
 	void *hcattr;
 	int rc, i;
 
@@ -901,19 +980,15 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			max_geneve_tlv_options);
 	attr->max_geneve_tlv_option_data_len = MLX5_GET(cmd_hca_cap, hcattr,
 			max_geneve_tlv_option_data_len);
+	attr->geneve_tlv_option_offset = MLX5_GET(cmd_hca_cap, hcattr,
+						  geneve_tlv_option_offset);
+	attr->geneve_tlv_sample = MLX5_GET(cmd_hca_cap, hcattr,
+					   geneve_tlv_sample);
+	attr->query_match_sample_info = MLX5_GET(cmd_hca_cap, hcattr,
+						 query_match_sample_info);
+	attr->geneve_tlv_option_sample_id = MLX5_GET(cmd_hca_cap, hcattr,
+						     flex_parser_id_geneve_opt_0);
 	attr->qos.sup = MLX5_GET(cmd_hca_cap, hcattr, qos);
-	attr->qos.flow_meter_aso_sup = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-					 general_obj_types) &
-			      MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_METER_ASO);
-	attr->vdpa.valid = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-					 general_obj_types) &
-			      MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q);
-	attr->vdpa.queue_counters_valid = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-							general_obj_types) &
-				  MLX5_GENERAL_OBJ_TYPES_CAP_VIRTIO_Q_COUNTERS);
-	attr->parse_graph_flex_node = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-					 general_obj_types) &
-			      MLX5_GENERAL_OBJ_TYPES_CAP_PARSE_GRAPH_FLEX_NODE);
 	attr->wqe_index_ignore = MLX5_GET(cmd_hca_cap, hcattr,
 					  wqe_index_ignore_cap);
 	attr->cross_channel = MLX5_GET(cmd_hca_cap, hcattr, cd);
@@ -937,6 +1012,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	/* Read the general_obj_types bitmap and extract the relevant bits. */
 	general_obj_types_supported = MLX5_GET64(cmd_hca_cap, hcattr,
 						 general_obj_types);
+	attr->qos.flow_meter_aso_sup =
+			!!(general_obj_types_supported &
+			   MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_METER_ASO);
 	attr->vdpa.valid = !!(general_obj_types_supported &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q);
 	attr->vdpa.queue_counters_valid =
@@ -962,6 +1040,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->log_max_qp = MLX5_GET(cmd_hca_cap, hcattr, log_max_qp);
 	attr->log_max_cq_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_cq_sz);
 	attr->log_max_qp_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_qp_sz);
+	attr->log_max_wq_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_wq_sz);
 	attr->log_max_mrw_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_mrw_sz);
 	attr->log_max_pd = MLX5_GET(cmd_hca_cap, hcattr, log_max_pd);
 	attr->log_max_srq = MLX5_GET(cmd_hca_cap, hcattr, log_max_srq);
@@ -978,8 +1057,10 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->mmo_dma_qp_en = MLX5_GET(cmd_hca_cap, hcattr, dma_mmo_qp);
 	attr->mmo_compress_qp_en = MLX5_GET(cmd_hca_cap, hcattr,
 			compress_mmo_qp);
-	attr->mmo_decompress_qp_en = MLX5_GET(cmd_hca_cap, hcattr,
-			decompress_mmo_qp);
+	attr->decomp_deflate_v1_en = MLX5_GET(cmd_hca_cap, hcattr,
+					      decompress_deflate_v1);
+	attr->decomp_deflate_v2_en = MLX5_GET(cmd_hca_cap, hcattr,
+					      decompress_deflate_v2);
 	attr->compress_min_block_size = MLX5_GET(cmd_hca_cap, hcattr,
 						 compress_min_block_size);
 	attr->log_max_mmo_dma = MLX5_GET(cmd_hca_cap, hcattr, log_dma_mmo_size);
@@ -987,21 +1068,35 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					      log_compress_mmo_size);
 	attr->log_max_mmo_decompress = MLX5_GET(cmd_hca_cap, hcattr,
 						log_decompress_mmo_size);
+	attr->decomp_lz4_data_only_en = MLX5_GET(cmd_hca_cap, hcattr,
+						 decompress_lz4_data_only_v2);
+	attr->decomp_lz4_no_checksum_en = MLX5_GET(cmd_hca_cap, hcattr,
+						 decompress_lz4_no_checksum_v2);
+	attr->decomp_lz4_checksum_en = MLX5_GET(cmd_hca_cap, hcattr,
+						decompress_lz4_checksum_v2);
 	attr->cqe_compression = MLX5_GET(cmd_hca_cap, hcattr, cqe_compression);
 	attr->mini_cqe_resp_flow_tag = MLX5_GET(cmd_hca_cap, hcattr,
 						mini_cqe_resp_flow_tag);
+	attr->cqe_compression_128 = MLX5_GET(cmd_hca_cap, hcattr,
+						cqe_compression_128);
 	attr->mini_cqe_resp_l3_l4_tag = MLX5_GET(cmd_hca_cap, hcattr,
 						 mini_cqe_resp_l3_l4_tag);
+	attr->enhanced_cqe_compression = MLX5_GET(cmd_hca_cap, hcattr,
+						 enhanced_cqe_compression);
 	attr->umr_indirect_mkey_disabled =
 		MLX5_GET(cmd_hca_cap, hcattr, umr_indirect_mkey_disabled);
 	attr->umr_modify_entity_size_disabled =
 		MLX5_GET(cmd_hca_cap, hcattr, umr_modify_entity_size_disabled);
 	attr->wait_on_time = MLX5_GET(cmd_hca_cap, hcattr, wait_on_time);
 	attr->crypto = MLX5_GET(cmd_hca_cap, hcattr, crypto);
-	attr->ct_offload = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-					 general_obj_types) &
+	attr->ct_offload = !!(general_obj_types_supported &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_CONN_TRACK_OFFLOAD);
 	attr->rq_delay_drop = MLX5_GET(cmd_hca_cap, hcattr, rq_delay_drop);
+	attr->nic_flow_table = MLX5_GET(cmd_hca_cap, hcattr, nic_flow_table);
+	attr->striding_rq = MLX5_GET(cmd_hca_cap, hcattr, striding_rq);
+	attr->ext_stride_num_range =
+		MLX5_GET(cmd_hca_cap, hcattr, ext_stride_num_range);
+	attr->nic_flow_table = MLX5_GET(cmd_hca_cap, hcattr, nic_flow_table);
 	attr->max_flow_counter_15_0 = MLX5_GET(cmd_hca_cap, hcattr,
 			max_flow_counter_15_0);
 	attr->max_flow_counter_31_16 = MLX5_GET(cmd_hca_cap, hcattr,
@@ -1012,8 +1107,24 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			flow_counter_access_aso);
 	attr->flow_access_aso_opc_mod = MLX5_GET(cmd_hca_cap, hcattr,
 			flow_access_aso_opc_mod);
+	attr->wqe_based_flow_table_sup = MLX5_GET(cmd_hca_cap, hcattr,
+			wqe_based_flow_table_update_cap);
+	/*
+	 * Flex item support needs max_num_prog_sample_field
+	 * from the Capabilities 2 table for PARSE_GRAPH_NODE
+	 */
+	if (attr->parse_graph_flex_node) {
+		rc = mlx5_devx_cmd_query_hca_parse_graph_node_cap
+			(ctx, &attr->flex);
+		if (rc)
+			return -1;
+		attr->flex.query_match_sample_info =
+						attr->query_match_sample_info;
+	}
 	if (attr->crypto) {
-		attr->aes_xts = MLX5_GET(cmd_hca_cap, hcattr, aes_xts);
+		attr->aes_xts = MLX5_GET(cmd_hca_cap, hcattr, aes_xts) ||
+		MLX5_GET(cmd_hca_cap, hcattr, aes_xts_multi_block_be_tweak) ||
+		MLX5_GET(cmd_hca_cap, hcattr, aes_xts_single_block_le_tweak);
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_CRYPTO |
 				MLX5_HCA_CAP_OPMOD_GET_CUR);
@@ -1022,6 +1133,21 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		attr->crypto_wrapped_import_method = !!(MLX5_GET(crypto_caps,
 						hcattr, wrapped_import_method)
 						& 1 << 2);
+		attr->crypto_mmo.crypto_mmo_qp = MLX5_GET(crypto_caps, hcattr, crypto_mmo_qp);
+		attr->crypto_mmo.gcm_256_encrypt =
+			MLX5_GET(crypto_caps, hcattr, crypto_aes_gcm_256_encrypt);
+		attr->crypto_mmo.gcm_128_encrypt =
+			MLX5_GET(crypto_caps, hcattr, crypto_aes_gcm_128_encrypt);
+		attr->crypto_mmo.gcm_256_decrypt =
+			MLX5_GET(crypto_caps, hcattr, crypto_aes_gcm_256_decrypt);
+		attr->crypto_mmo.gcm_128_decrypt =
+			MLX5_GET(crypto_caps, hcattr, crypto_aes_gcm_128_decrypt);
+		attr->crypto_mmo.gcm_auth_tag_128 =
+			MLX5_GET(crypto_caps, hcattr, gcm_auth_tag_128);
+		attr->crypto_mmo.gcm_auth_tag_96 =
+			MLX5_GET(crypto_caps, hcattr, gcm_auth_tag_96);
+		attr->crypto_mmo.log_crypto_mmo_max_size =
+			MLX5_GET(crypto_caps, hcattr, log_crypto_mmo_max_size);
 	}
 	if (hca_cap_2_sup) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
@@ -1045,6 +1171,22 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		attr->flow_counter_bulk_log_granularity =
 			MLX5_GET(cmd_hca_cap_2, hcattr,
 				 flow_counter_bulk_log_granularity);
+		rc = MLX5_GET(cmd_hca_cap_2, hcattr,
+			      cross_vhca_object_to_object_supported);
+		attr->cross_vhca =
+			(rc & MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_STC_TO_TIR) &&
+			(rc & MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_STC_TO_FT) &&
+			(rc & MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_FT_TO_FT) &&
+			(rc & MLX5_CROSS_VHCA_OBJ_TO_OBJ_TYPE_FT_TO_RTC);
+		rc = MLX5_GET(cmd_hca_cap_2, hcattr,
+			      allowed_object_for_other_vhca_access);
+		attr->cross_vhca = attr->cross_vhca &&
+			(rc & MLX5_CROSS_VHCA_ALLOWED_OBJS_TIR) &&
+			(rc & MLX5_CROSS_VHCA_ALLOWED_OBJS_FT) &&
+			(rc & MLX5_CROSS_VHCA_ALLOWED_OBJS_RTC);
+		if (attr->ct_offload)
+			attr->log_max_conn_track_offload = MLX5_GET(cmd_hca_cap_2, hcattr,
+				log_max_conn_track_offload);
 	}
 	if (attr->log_min_stride_wqe_sz == 0)
 		attr->log_min_stride_wqe_sz = MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE;
@@ -1080,16 +1222,6 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					log_max_num_meter_aso);
 		}
 	}
-	/*
-	 * Flex item support needs max_num_prog_sample_field
-	 * from the Capabilities 2 table for PARSE_GRAPH_NODE
-	 */
-	if (attr->parse_graph_flex_node) {
-		rc = mlx5_devx_cmd_query_hca_parse_graph_node_cap
-			(ctx, &attr->flex);
-		if (rc)
-			return -1;
-	}
 	if (attr->vdpa.valid)
 		mlx5_devx_cmd_query_hca_vdpa_attr(ctx, &attr->vdpa);
 	if (!attr->eth_net_offloads)
@@ -1114,7 +1246,10 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->modify_outer_ip_ecn = MLX5_GET
 		(flow_table_nic_cap, hcattr,
 		 ft_header_modify_nic_receive.outer_ip_ecn);
-	attr->set_reg_c = 0xff;
+	attr->modify_outer_ipv6_traffic_class = MLX5_GET
+		(flow_table_nic_cap, hcattr,
+		 ft_header_modify_nic_receive.outer_ipv6_traffic_class);
+	attr->set_reg_c = 0xffff;
 	if (attr->nic_flow_table) {
 #define GET_RX_REG_X_BITS \
 		MLX5_GET(flow_table_nic_cap, hcattr, \
@@ -1123,10 +1258,16 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		MLX5_GET(flow_table_nic_cap, hcattr, \
 			 ft_header_modify_nic_transmit.metadata_reg_c_x)
 
-		uint32_t tx_reg, rx_reg;
+		uint32_t tx_reg, rx_reg, reg_c_8_15;
 
 		tx_reg = GET_TX_REG_X_BITS;
+		reg_c_8_15 = MLX5_GET(flow_table_nic_cap, hcattr,
+				      ft_field_support_2_nic_transmit.metadata_reg_c_8_15);
+		tx_reg |= ((0xff & reg_c_8_15) << 8);
 		rx_reg = GET_RX_REG_X_BITS;
+		reg_c_8_15 = MLX5_GET(flow_table_nic_cap, hcattr,
+				      ft_field_support_2_nic_receive.metadata_reg_c_8_15);
+		rx_reg |= ((0xff & reg_c_8_15) << 8);
 		attr->set_reg_c &= (rx_reg & tx_reg);
 
 #undef GET_RX_REG_X_BITS
@@ -1139,6 +1280,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->outer_ipv4_ihl = MLX5_GET
 		(flow_table_nic_cap, hcattr,
 		 ft_field_support_2_nic_receive.outer_ipv4_ihl);
+	attr->lag_rx_port_affinity = MLX5_GET
+		(flow_table_nic_cap, hcattr,
+		 ft_field_support_2_nic_receive.lag_rx_port_affinity);
 	/* Query HCA offloads for Ethernet protocol. */
 	hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 			MLX5_GET_HCA_CAP_OP_MOD_ETHERNET_OFFLOAD_CAPS |
@@ -1196,9 +1340,40 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->tunnel_stateless_gtp = MLX5_GET
 					(per_protocol_networking_offload_caps,
 					 hcattr, tunnel_stateless_gtp);
+	attr->tunnel_stateless_vxlan_gpe_nsh = MLX5_GET
+					(per_protocol_networking_offload_caps,
+					 hcattr, tunnel_stateless_vxlan_gpe_nsh);
 	attr->rss_ind_tbl_cap = MLX5_GET
 					(per_protocol_networking_offload_caps,
 					 hcattr, rss_ind_tbl_cap);
+	attr->multi_pkt_send_wqe = MLX5_GET
+					(per_protocol_networking_offload_caps,
+					 hcattr, multi_pkt_send_wqe);
+	attr->enhanced_multi_pkt_send_wqe = MLX5_GET
+					(per_protocol_networking_offload_caps,
+					 hcattr, enhanced_multi_pkt_send_wqe);
+	if (attr->wqe_based_flow_table_sup) {
+		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
+				MLX5_GET_HCA_CAP_OP_MOD_WQE_BASED_FLOW_TABLE |
+				MLX5_HCA_CAP_OPMOD_GET_CUR);
+		if (!hcattr) {
+			DRV_LOG(DEBUG, "Failed to query WQE Based Flow table capabilities");
+			return rc;
+		}
+		attr->max_header_modify_pattern_length = MLX5_GET(wqe_based_flow_table_cap,
+								  hcattr,
+								  max_header_modify_pattern_length);
+		attr->fdb_unified_en = MLX5_GET(wqe_based_flow_table_cap,
+						hcattr,
+						fdb_unified_en);
+		stc_action_type_127_64 = MLX5_GET64(wqe_based_flow_table_cap,
+						    hcattr,
+						    stc_action_type_127_64);
+		if (stc_action_type_127_64 &
+		   (1 << (MLX5_IFC_STC_ACTION_TYPE_JUMP_FLOW_TABLE_FDB_RX_BIT_INDEX -
+			  MLX5_IFC_STC_ACTION_TYPE_BIT_64_INDEX)))
+			attr->jump_fdb_rx_en = 1;
+	}
 	/* Query HCA attribute for ROCE. */
 	if (attr->roce) {
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
@@ -1211,8 +1386,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		}
 		attr->qp_ts_format = MLX5_GET(roce_caps, hcattr, qp_ts_format);
 	}
-	if (attr->eth_virt &&
-	    attr->wqe_inline_mode == MLX5_CAP_INLINE_MODE_VPORT_CONTEXT) {
+	if (attr->eth_virt) {
 		rc = mlx5_devx_cmd_query_nic_vport_context(ctx, 0, attr);
 		if (rc) {
 			attr->eth_virt = 0;
@@ -1232,7 +1406,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			MLX5_GET(esw_cap, hcattr, esw_manager_vport_number);
 	}
 	if (attr->eswitch_manager) {
-		uint32_t esw_reg;
+		uint32_t esw_reg, reg_c_8_15;
 
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_ESW_FLOW_TABLE |
@@ -1241,7 +1415,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			return rc;
 		esw_reg = MLX5_GET(flow_table_esw_cap, hcattr,
 				   ft_header_modify_esw_fdb.metadata_reg_c_x);
-		attr->set_reg_c &= esw_reg;
+		reg_c_8_15 = MLX5_GET(flow_table_esw_cap, hcattr,
+				      ft_field_support_2_esw_fdb.metadata_reg_c_8_15);
+		attr->set_reg_c &= ((0xff & reg_c_8_15) << 8) | esw_reg;
 	}
 	return 0;
 error:
@@ -1262,6 +1438,7 @@ error:
  * @return
  *   0 on success, a negative value otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_qp_query_tis_td)
 int
 mlx5_devx_cmd_qp_query_tis_td(void *qp, uint32_t tis_num,
 			      uint32_t *tis_td)
@@ -1348,6 +1525,7 @@ devx_cmd_fill_wq_data(void *wq_ctx, struct mlx5_devx_wq_attr *wq_attr)
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_rq)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_rq(void *ctx,
 			struct mlx5_devx_create_rq_attr *rq_attr,
@@ -1406,6 +1584,7 @@ mlx5_devx_cmd_create_rq(void *ctx,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_modify_rq)
 int
 mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
 			struct mlx5_devx_modify_rq_attr *rq_attr)
@@ -1437,12 +1616,43 @@ mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
 	}
 	ret = mlx5_glue->devx_obj_modify(rq->obj, in, sizeof(in),
 					 out, sizeof(out));
+
 	if (ret) {
 		DRV_LOG(ERR, "Failed to modify RQ using DevX");
 		rte_errno = errno;
 		return -errno;
 	}
 	return ret;
+}
+
+/*
+ * Query RQ using DevX API.
+ *
+ * @param[in] rq_obj
+ *   RQ Devx Object
+ * @param[out] out
+ *   RQ Query Output
+ * @param[in] outlen
+ *   RQ Query Output Length
+ *
+ * @return
+ *   0 if Query successful, else non-zero return value from devx_obj_query API
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_query_rq)
+int
+mlx5_devx_cmd_query_rq(struct mlx5_devx_obj *rq_obj, void *out, size_t outlen)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_rq_in)] = {0};
+	int rc;
+
+	MLX5_SET(query_rq_in, in, opcode, MLX5_CMD_OP_QUERY_RQ);
+	MLX5_SET(query_rq_in, in, rqn, rq_obj->id);
+	rc = mlx5_glue->devx_obj_query(rq_obj->obj, in, sizeof(in), out, outlen);
+	if (rc || MLX5_FW_STATUS(out)) {
+		DEVX_DRV_LOG(ERR, out, "RQ query", "rq_id", rq_obj->id);
+		return MLX5_DEVX_ERR_RC(rc);
+	}
+	return 0;
 }
 
 /**
@@ -1458,6 +1668,7 @@ mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_rmp)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_rmp(void *ctx,
 			 struct mlx5_devx_create_rmp_attr *rmp_attr,
@@ -1505,6 +1716,7 @@ mlx5_devx_cmd_create_rmp(void *ctx,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_tir)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_tir(void *ctx,
 			 struct mlx5_devx_tir_attr *tir_attr)
@@ -1573,6 +1785,7 @@ mlx5_devx_cmd_create_tir(void *ctx,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_modify_tir)
 int
 mlx5_devx_cmd_modify_tir(struct mlx5_devx_obj *tir,
 			 struct mlx5_devx_modify_tir_attr *modify_tir_attr)
@@ -1657,6 +1870,7 @@ mlx5_devx_cmd_modify_tir(struct mlx5_devx_obj *tir,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_rqt)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_rqt(void *ctx,
 			 struct mlx5_devx_rqt_attr *rqt_attr)
@@ -1667,7 +1881,7 @@ mlx5_devx_cmd_create_rqt(void *ctx,
 	uint32_t out[MLX5_ST_SZ_DW(create_rqt_out)] = {0};
 	void *rqt_ctx;
 	struct mlx5_devx_obj *rqt = NULL;
-	int i;
+	unsigned int i;
 
 	in = mlx5_malloc(MLX5_MEM_ZERO, inlen, 0, SOCKET_ID_ANY);
 	if (!in) {
@@ -1711,6 +1925,7 @@ mlx5_devx_cmd_create_rqt(void *ctx,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_modify_rqt)
 int
 mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
 			 struct mlx5_devx_rqt_attr *rqt_attr)
@@ -1720,7 +1935,7 @@ mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
 	uint32_t out[MLX5_ST_SZ_DW(modify_rqt_out)] = {0};
 	uint32_t *in = mlx5_malloc(MLX5_MEM_ZERO, inlen, 0, SOCKET_ID_ANY);
 	void *rqt_ctx;
-	int i;
+	unsigned int i;
 	int ret;
 
 	if (!in) {
@@ -1733,7 +1948,6 @@ mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
 	MLX5_SET64(modify_rqt_in, in, modify_bitmask, 0x1);
 	rqt_ctx = MLX5_ADDR_OF(modify_rqt_in, in, rqt_context);
 	MLX5_SET(rqtc, rqt_ctx, list_q_type, rqt_attr->rq_type);
-	MLX5_SET(rqtc, rqt_ctx, rqt_max_size, rqt_attr->rqt_max_size);
 	MLX5_SET(rqtc, rqt_ctx, rqt_actual_size, rqt_attr->rqt_actual_size);
 	for (i = 0; i < rqt_attr->rqt_actual_size; i++)
 		MLX5_SET(rqtc, rqt_ctx, rq_num[i], rqt_attr->rq_list[i]);
@@ -1760,6 +1974,7 @@ mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  **/
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_sq)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_sq(void *ctx,
 			struct mlx5_devx_create_sq_attr *sq_attr)
@@ -1826,6 +2041,7 @@ mlx5_devx_cmd_create_sq(void *ctx,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_modify_sq)
 int
 mlx5_devx_cmd_modify_sq(struct mlx5_devx_obj *sq,
 			struct mlx5_devx_modify_sq_attr *sq_attr)
@@ -1852,6 +2068,36 @@ mlx5_devx_cmd_modify_sq(struct mlx5_devx_obj *sq,
 	return ret;
 }
 
+/*
+ * Query SQ using DevX API.
+ *
+ * @param[in] sq_obj
+ *   SQ Devx Object
+ * @param[out] out
+ *   SQ Query Output
+ * @param[in] outlen
+ *   SQ Query Output Length
+ *
+ * @return
+ *   0 if Query successful, else non-zero return value from devx_obj_query API
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_query_sq)
+int
+mlx5_devx_cmd_query_sq(struct mlx5_devx_obj *sq_obj, void *out, size_t outlen)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_sq_in)] = {0};
+	int rc;
+
+	MLX5_SET(query_sq_in, in, opcode, MLX5_CMD_OP_QUERY_SQ);
+	MLX5_SET(query_sq_in, in, sqn, sq_obj->id);
+	rc = mlx5_glue->devx_obj_query(sq_obj->obj, in, sizeof(in), out, outlen);
+	if (rc || MLX5_FW_STATUS(out)) {
+		DEVX_DRV_LOG(ERR, out, "SQ query", "sq_id", sq_obj->id);
+		return MLX5_DEVX_ERR_RC(rc);
+	}
+	return 0;
+}
+
 /**
  * Create TIS using DevX API.
  *
@@ -1863,6 +2109,7 @@ mlx5_devx_cmd_modify_sq(struct mlx5_devx_obj *sq,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_tis)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_tis(void *ctx,
 			 struct mlx5_devx_tis_attr *tis_attr)
@@ -1906,6 +2153,7 @@ mlx5_devx_cmd_create_tis(void *ctx,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_td)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_td(void *ctx)
 {
@@ -1948,6 +2196,7 @@ mlx5_devx_cmd_create_td(void *ctx)
  * @return
  *   0 on success, a negative value otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_flow_dump)
 int
 mlx5_devx_cmd_flow_dump(void *fdb_domain __rte_unused,
 			void *rx_domain __rte_unused,
@@ -1973,6 +2222,7 @@ mlx5_devx_cmd_flow_dump(void *fdb_domain __rte_unused,
 	return -ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_flow_single_dump)
 int
 mlx5_devx_cmd_flow_single_dump(void *rule_info __rte_unused,
 			FILE *file __rte_unused)
@@ -1998,6 +2248,7 @@ mlx5_devx_cmd_flow_single_dump(void *rule_info __rte_unused,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_cq)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 {
@@ -2032,6 +2283,7 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 	MLX5_SET(cqc, cqctx, c_eqn, attr->eqn);
 	MLX5_SET(cqc, cqctx, uar_page, attr->uar_page_id);
 	MLX5_SET(cqc, cqctx, cqe_comp_en, !!attr->cqe_comp_en);
+	MLX5_SET(cqc, cqctx, cqe_comp_layout, !!attr->cqe_comp_layout);
 	MLX5_SET(cqc, cqctx, mini_cqe_res_format, attr->mini_cqe_res_format);
 	MLX5_SET(cqc, cqctx, mini_cqe_res_format_ext,
 		 attr->mini_cqe_res_format_ext);
@@ -2052,6 +2304,36 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 	return cq_obj;
 }
 
+/*
+ * Query CQ using DevX API.
+ *
+ * @param[in] cq_obj
+ *   CQ Devx Object
+ * @param[out] out
+ *   CQ Query Output
+ * @param[in] outlen
+ *   CQ Query Output Length
+ *
+ * @return
+ *   0 if Query successful, else non-zero return value from devx_obj_query API
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_query_cq)
+int
+mlx5_devx_cmd_query_cq(struct mlx5_devx_obj *cq_obj, void *out, size_t outlen)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_cq_in)] = {0};
+	int rc;
+
+	MLX5_SET(query_cq_in, in, opcode, MLX5_CMD_OP_QUERY_CQ);
+	MLX5_SET(query_cq_in, in, cqn, cq_obj->id);
+	rc = mlx5_glue->devx_obj_query(cq_obj->obj, in, sizeof(in), out, outlen);
+	if (rc || MLX5_FW_STATUS(out)) {
+		DEVX_DRV_LOG(ERR, out, "CQ query", "cq_id", cq_obj->id);
+		return MLX5_DEVX_ERR_RC(rc);
+	}
+	return 0;
+}
+
 /**
  * Create VIRTQ using DevX API.
  *
@@ -2063,6 +2345,7 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_virtq)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_virtq(void *ctx,
 			   struct mlx5_devx_virtq_attr *attr)
@@ -2139,6 +2422,7 @@ mlx5_devx_cmd_create_virtq(void *ctx,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_modify_virtq)
 int
 mlx5_devx_cmd_modify_virtq(struct mlx5_devx_obj *virtq_obj,
 			   struct mlx5_devx_virtq_attr *attr)
@@ -2237,6 +2521,7 @@ mlx5_devx_cmd_modify_virtq(struct mlx5_devx_obj *virtq_obj,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_query_virtq)
 int
 mlx5_devx_cmd_query_virtq(struct mlx5_devx_obj *virtq_obj,
 			   struct mlx5_devx_virtq_attr *attr)
@@ -2279,6 +2564,7 @@ mlx5_devx_cmd_query_virtq(struct mlx5_devx_obj *virtq_obj,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_qp)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_qp(void *ctx,
 			struct mlx5_devx_qp_attr *attr)
@@ -2340,6 +2626,12 @@ mlx5_devx_cmd_create_qp(void *ctx,
 				 attr->dbr_umem_valid);
 			MLX5_SET(qpc, qpc, dbr_umem_id, attr->dbr_umem_id);
 		}
+		if (attr->cd_master)
+			MLX5_SET(qpc, qpc, cd_master, attr->cd_master);
+		if (attr->cd_slave_send)
+			MLX5_SET(qpc, qpc, cd_slave_send, attr->cd_slave_send);
+		if (attr->cd_slave_recv)
+			MLX5_SET(qpc, qpc, cd_slave_receive, attr->cd_slave_recv);
 		MLX5_SET64(qpc, qpc, dbr_addr, attr->dbr_address);
 		MLX5_SET64(create_qp_in, in, wq_umem_offset,
 			   attr->wq_umem_offset);
@@ -2375,6 +2667,7 @@ mlx5_devx_cmd_create_qp(void *ctx,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_modify_qp_state)
 int
 mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp, uint32_t qp_st_mod_op,
 			      uint32_t remote_qp_id)
@@ -2452,6 +2745,7 @@ mlx5_devx_cmd_modify_qp_state(struct mlx5_devx_obj *qp, uint32_t qp_st_mod_op,
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_virtio_q_counters)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_virtio_q_counters(void *ctx)
 {
@@ -2483,6 +2777,7 @@ mlx5_devx_cmd_create_virtio_q_counters(void *ctx)
 	return couners_obj;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_query_virtio_q_counters)
 int
 mlx5_devx_cmd_query_virtio_q_counters(struct mlx5_devx_obj *couners_obj,
 				   struct mlx5_devx_virtio_q_couners_attr *attr)
@@ -2532,6 +2827,7 @@ mlx5_devx_cmd_query_virtio_q_counters(struct mlx5_devx_obj *couners_obj,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_flow_hit_aso_obj)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_flow_hit_aso_obj(void *ctx, uint32_t pd)
 {
@@ -2574,6 +2870,7 @@ mlx5_devx_cmd_create_flow_hit_aso_obj(void *ctx, uint32_t pd)
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_alloc_pd)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_alloc_pd(void *ctx)
 {
@@ -2614,6 +2911,7 @@ mlx5_devx_cmd_alloc_pd(void *ctx)
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_flow_meter_aso_obj)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_flow_meter_aso_obj(void *ctx, uint32_t pd,
 						uint32_t log_obj_size)
@@ -2667,6 +2965,7 @@ mlx5_devx_cmd_create_flow_meter_aso_obj(void *ctx, uint32_t pd,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_conn_track_offload_obj)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_conn_track_offload_obj(void *ctx, uint32_t pd,
 					    uint32_t log_obj_size)
@@ -2707,19 +3006,16 @@ mlx5_devx_cmd_create_conn_track_offload_obj(void *ctx, uint32_t pd,
  *
  * @param[in] ctx
  *   Context returned from mlx5 open_device() glue function.
- * @param [in] class
- *   TLV option variable value of class
- * @param [in] type
- *   TLV option variable value of type
- * @param [in] len
- *   TLV option variable value of len
+ * @param[in] attr
+ *   Pointer to GENEVE TLV option attributes structure.
  *
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_geneve_tlv_option)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
-		uint16_t class, uint8_t type, uint8_t len)
+				  struct mlx5_devx_geneve_tlv_option_attr *attr)
 {
 	uint32_t in[MLX5_ST_SZ_DW(create_geneve_tlv_option_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
@@ -2728,25 +3024,37 @@ mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
 						   0, SOCKET_ID_ANY);
 
 	if (!geneve_tlv_opt_obj) {
-		DRV_LOG(ERR, "Failed to allocate geneve tlv option object.");
+		DRV_LOG(ERR, "Failed to allocate GENEVE TLV option object.");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
 	void *hdr = MLX5_ADDR_OF(create_geneve_tlv_option_in, in, hdr);
 	void *opt = MLX5_ADDR_OF(create_geneve_tlv_option_in, in,
-			geneve_tlv_opt);
+				 geneve_tlv_opt);
 	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
-			MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
 	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
 		 MLX5_GENERAL_OBJ_TYPE_GENEVE_TLV_OPT);
-	MLX5_SET(geneve_tlv_option, opt, option_class,
-			rte_be_to_cpu_16(class));
-	MLX5_SET(geneve_tlv_option, opt, option_type, type);
-	MLX5_SET(geneve_tlv_option, opt, option_data_length, len);
+	MLX5_SET(geneve_tlv_option, opt, option_type, attr->option_type);
+	MLX5_SET(geneve_tlv_option, opt, option_data_length,
+		 attr->option_data_len);
+	if (attr->option_class_ignore)
+		MLX5_SET(geneve_tlv_option, opt, option_class_ignore,
+			 attr->option_class_ignore);
+	else
+		MLX5_SET(geneve_tlv_option, opt, option_class,
+			 rte_be_to_cpu_16(attr->option_class));
+	if (attr->offset_valid) {
+		MLX5_SET(geneve_tlv_option, opt, sample_offset_valid,
+			 attr->offset_valid);
+		MLX5_SET(geneve_tlv_option, opt, sample_offset,
+			 attr->sample_offset);
+	}
 	geneve_tlv_opt_obj->obj = mlx5_glue->devx_obj_create(ctx, in,
-					sizeof(in), out, sizeof(out));
+							     sizeof(in), out,
+							     sizeof(out));
 	if (!geneve_tlv_opt_obj->obj) {
-		DEVX_DRV_LOG(ERR, out, "create GENEVE TLV", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create GENEVE TLV option", NULL, 0);
 		mlx5_free(geneve_tlv_opt_obj);
 		return NULL;
 	}
@@ -2754,6 +3062,58 @@ mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
 	return geneve_tlv_opt_obj;
 }
 
+/**
+ * Query GENEVE TLV option using DevX API.
+ *
+ * @param[in] ctx
+ *   Context used to create GENEVE TLV option object.
+ * @param[in] geneve_tlv_opt_obj
+ *   DevX object of the GENEVE TLV option.
+ * @param[out] attr
+ *   Pointer to match sample info attributes structure.
+ *
+ * @return
+ *   0 on success, a negative errno otherwise and rte_errno is set.
+ */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_query_geneve_tlv_option)
+int
+mlx5_devx_cmd_query_geneve_tlv_option(void *ctx,
+				      struct mlx5_devx_obj *geneve_tlv_opt_obj,
+				      struct mlx5_devx_match_sample_info_query_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(general_obj_in_cmd_hdr)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(query_geneve_tlv_option_out)] = {0};
+	void *hdr = MLX5_ADDR_OF(query_geneve_tlv_option_out, in, hdr);
+	void *opt = MLX5_ADDR_OF(query_geneve_tlv_option_out, out,
+				 geneve_tlv_opt);
+	int ret;
+
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
+		 MLX5_CMD_OP_QUERY_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_GENEVE_TLV_OPT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_id, geneve_tlv_opt_obj->id);
+	/* Call first query to get sample handle. */
+	ret = mlx5_glue->devx_obj_query(geneve_tlv_opt_obj->obj, in, sizeof(in),
+					out, sizeof(out));
+	if (ret) {
+		DRV_LOG(ERR, "Failed to query GENEVE TLV option using DevX.");
+		rte_errno = errno;
+		return -errno;
+	}
+	/* Call second query to get sample information. */
+	if (MLX5_GET(geneve_tlv_option, opt, sample_id_valid)) {
+		uint32_t sample_id = MLX5_GET(geneve_tlv_option, opt,
+					      geneve_sample_field_id);
+
+		return mlx5_devx_cmd_match_sample_info_query(ctx, sample_id,
+							     attr);
+	}
+	DRV_LOG(DEBUG, "GENEVE TLV option sample isn't valid.");
+	return 0;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_wq_query)
 int
 mlx5_devx_cmd_wq_query(void *wq, uint32_t *counter_set_id)
 {
@@ -2787,14 +3147,18 @@ mlx5_devx_cmd_wq_query(void *wq, uint32_t *counter_set_id)
  *
  * @param[in] ctx
  *   Context returned from mlx5 open_device() glue function.
+ * @param[out] syndrome
+ *   Get syndrome of devx command response.
  *
  * @return
  *   Pointer to counter object on success, a NULL value otherwise and
  *   rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_queue_counter_alloc)
 struct mlx5_devx_obj *
-mlx5_devx_cmd_queue_counter_alloc(void *ctx)
+mlx5_devx_cmd_queue_counter_alloc(void *ctx, int *syndrome)
 {
+	int status;
 	struct mlx5_devx_obj *dcs = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*dcs), 0,
 						SOCKET_ID_ANY);
 	uint32_t in[MLX5_ST_SZ_DW(alloc_q_counter_in)]   = {0};
@@ -2809,6 +3173,9 @@ mlx5_devx_cmd_queue_counter_alloc(void *ctx)
 					      sizeof(out));
 	if (!dcs->obj) {
 		DEVX_DRV_LOG(DEBUG, out, "create q counter set", NULL, 0);
+		status = MLX5_GET(alloc_q_counter_out, out, status);
+		if (status && syndrome)
+			*syndrome = MLX5_GET(alloc_q_counter_out, out, syndrome);
 		mlx5_free(dcs);
 		return NULL;
 	}
@@ -2829,6 +3196,7 @@ mlx5_devx_cmd_queue_counter_alloc(void *ctx)
  * @return
  *   0 on success, a negative value otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_queue_counter_query)
 int
 mlx5_devx_cmd_queue_counter_query(struct mlx5_devx_obj *dcs, int clear,
 				  uint32_t *out_of_buffers)
@@ -2864,6 +3232,7 @@ mlx5_devx_cmd_queue_counter_query(struct mlx5_devx_obj *dcs, int clear,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_dek_obj)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_dek_obj(void *ctx, struct mlx5_devx_dek_attr *attr)
 {
@@ -2914,6 +3283,7 @@ mlx5_devx_cmd_create_dek_obj(void *ctx, struct mlx5_devx_dek_attr *attr)
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_import_kek_obj)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_import_kek_obj(void *ctx,
 				    struct mlx5_devx_import_kek_attr *attr)
@@ -2961,6 +3331,7 @@ mlx5_devx_cmd_create_import_kek_obj(void *ctx,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_credential_obj)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_credential_obj(void *ctx,
 				    struct mlx5_devx_credential_attr *attr)
@@ -3009,6 +3380,7 @@ mlx5_devx_cmd_create_credential_obj(void *ctx,
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_create_crypto_login_obj)
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_crypto_login_obj(void *ctx,
 				      struct mlx5_devx_crypto_login_attr *attr)
@@ -3060,6 +3432,7 @@ mlx5_devx_cmd_create_crypto_login_obj(void *ctx,
  * @return
  *   0 on success, a negative value otherwise.
  */
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_devx_cmd_query_lag)
 int
 mlx5_devx_cmd_query_lag(void *ctx,
 			struct mlx5_devx_lag_context *lag_ctx)

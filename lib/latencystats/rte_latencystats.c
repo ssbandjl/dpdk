@@ -4,6 +4,7 @@
 
 #include <math.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_mbuf_dyn.h>
 #include <rte_log.h>
@@ -25,8 +26,10 @@ latencystat_cycles_per_ns(void)
 	return rte_get_timer_hz() / NS_PER_SEC;
 }
 
-/* Macros for printing using RTE_LOG */
-#define RTE_LOGTYPE_LATENCY_STATS RTE_LOGTYPE_USER1
+RTE_LOG_REGISTER_DEFAULT(latencystat_logtype, INFO);
+#define RTE_LOGTYPE_LATENCY_STATS latencystat_logtype
+#define LATENCY_STATS_LOG(level, ...) \
+	RTE_LOG_LINE(level, LATENCY_STATS, "" __VA_ARGS__)
 
 static uint64_t timestamp_dynflag;
 static int timestamp_dynfield_offset = -1;
@@ -76,6 +79,7 @@ static const struct latency_stats_nameoff lat_stats_strings[] = {
 #define NUM_LATENCY_STATS (sizeof(lat_stats_strings) / \
 				sizeof(lat_stats_strings[0]))
 
+RTE_EXPORT_SYMBOL(rte_latencystats_update)
 int32_t
 rte_latencystats_update(void)
 {
@@ -95,7 +99,7 @@ rte_latencystats_update(void)
 					latency_stats_index,
 					values, NUM_LATENCY_STATS);
 	if (ret < 0)
-		RTE_LOG(INFO, LATENCY_STATS, "Failed to push the stats\n");
+		LATENCY_STATS_LOG(INFO, "Failed to push the stats");
 
 	return ret;
 }
@@ -155,25 +159,26 @@ calc_latency(uint16_t pid __rte_unused,
 		uint16_t nb_pkts,
 		void *_ __rte_unused)
 {
-	unsigned int i, cnt = 0;
+	unsigned int i;
 	uint64_t now;
-	float latency[nb_pkts];
+	float latency;
 	static float prev_latency;
 	/*
 	 * Alpha represents degree of weighting decrease in EWMA,
 	 * a constant smoothing factor between 0 and 1. The value
 	 * is used below for measuring average latency.
 	 */
-	const float alpha = 0.2;
+	const float alpha = 0.2f;
 
 	now = rte_rdtsc();
-	for (i = 0; i < nb_pkts; i++) {
-		if (pkts[i]->ol_flags & timestamp_dynflag)
-			latency[cnt++] = now - *timestamp_dynfield(pkts[i]);
-	}
 
 	rte_spinlock_lock(&glob_stats->lock);
-	for (i = 0; i < cnt; i++) {
+	for (i = 0; i < nb_pkts; i++) {
+		if (!(pkts[i]->ol_flags & timestamp_dynflag))
+			continue;
+
+		latency = now - *timestamp_dynfield(pkts[i]);
+
 		/*
 		 * The jitter is calculated as statistical mean of interpacket
 		 * delay variation. The "jitter estimate" is computed by taking
@@ -185,28 +190,29 @@ calc_latency(uint16_t pid __rte_unused,
 		 * Reference: Calculated as per RFC 5481, sec 4.1,
 		 * RFC 3393 sec 4.5, RFC 1889 sec.
 		 */
-		glob_stats->jitter +=  (fabsf(prev_latency - latency[i])
+		glob_stats->jitter +=  (fabsf(prev_latency - latency)
 					- glob_stats->jitter)/16;
 		if (glob_stats->min_latency == 0)
-			glob_stats->min_latency = latency[i];
-		else if (latency[i] < glob_stats->min_latency)
-			glob_stats->min_latency = latency[i];
-		else if (latency[i] > glob_stats->max_latency)
-			glob_stats->max_latency = latency[i];
+			glob_stats->min_latency = latency;
+		else if (latency < glob_stats->min_latency)
+			glob_stats->min_latency = latency;
+		else if (latency > glob_stats->max_latency)
+			glob_stats->max_latency = latency;
 		/*
 		 * The average latency is measured using exponential moving
 		 * average, i.e. using EWMA
 		 * https://en.wikipedia.org/wiki/Moving_average
 		 */
 		glob_stats->avg_latency +=
-			alpha * (latency[i] - glob_stats->avg_latency);
-		prev_latency = latency[i];
+			alpha * (latency - glob_stats->avg_latency);
+		prev_latency = latency;
 	}
 	rte_spinlock_unlock(&glob_stats->lock);
 
 	return nb_pkts;
 }
 
+RTE_EXPORT_SYMBOL(rte_latencystats_init)
 int
 rte_latencystats_init(uint64_t app_samp_intvl,
 		rte_latency_stats_flow_type_fn user_cb)
@@ -227,7 +233,7 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 	mz = rte_memzone_reserve(MZ_RTE_LATENCY_STATS, sizeof(*glob_stats),
 					rte_socket_id(), flags);
 	if (mz == NULL) {
-		RTE_LOG(ERR, LATENCY_STATS, "Cannot reserve memory: %s:%d\n",
+		LATENCY_STATS_LOG(ERR, "Cannot reserve memory: %s:%d",
 			__func__, __LINE__);
 		return -ENOMEM;
 	}
@@ -243,8 +249,8 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 	latency_stats_index = rte_metrics_reg_names(ptr_strings,
 							NUM_LATENCY_STATS);
 	if (latency_stats_index < 0) {
-		RTE_LOG(DEBUG, LATENCY_STATS,
-			"Failed to register latency stats names\n");
+		LATENCY_STATS_LOG(DEBUG,
+			"Failed to register latency stats names");
 		return -1;
 	}
 
@@ -252,8 +258,8 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 	ret = rte_mbuf_dyn_rx_timestamp_register(&timestamp_dynfield_offset,
 			&timestamp_dynflag);
 	if (ret != 0) {
-		RTE_LOG(ERR, LATENCY_STATS,
-			"Cannot register mbuf field/flag for timestamp\n");
+		LATENCY_STATS_LOG(ERR,
+			"Cannot register mbuf field/flag for timestamp");
 		return -rte_errno;
 	}
 
@@ -263,8 +269,8 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 
 		ret = rte_eth_dev_info_get(pid, &dev_info);
 		if (ret != 0) {
-			RTE_LOG(INFO, LATENCY_STATS,
-				"Error during getting device (port %u) info: %s\n",
+			LATENCY_STATS_LOG(INFO,
+				"Error during getting device (port %u) info: %s",
 				pid, strerror(-ret));
 
 			continue;
@@ -275,23 +281,24 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 			cbs->cb = rte_eth_add_first_rx_callback(pid, qid,
 					add_time_stamps, user_cb);
 			if (!cbs->cb)
-				RTE_LOG(INFO, LATENCY_STATS, "Failed to "
+				LATENCY_STATS_LOG(INFO, "Failed to "
 					"register Rx callback for pid=%d, "
-					"qid=%d\n", pid, qid);
+					"qid=%d", pid, qid);
 		}
 		for (qid = 0; qid < dev_info.nb_tx_queues; qid++) {
 			cbs = &tx_cbs[pid][qid];
 			cbs->cb =  rte_eth_add_tx_callback(pid, qid,
 					calc_latency, user_cb);
 			if (!cbs->cb)
-				RTE_LOG(INFO, LATENCY_STATS, "Failed to "
+				LATENCY_STATS_LOG(INFO, "Failed to "
 					"register Tx callback for pid=%d, "
-					"qid=%d\n", pid, qid);
+					"qid=%d", pid, qid);
 		}
 	}
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_latencystats_uninit)
 int
 rte_latencystats_uninit(void)
 {
@@ -307,8 +314,8 @@ rte_latencystats_uninit(void)
 
 		ret = rte_eth_dev_info_get(pid, &dev_info);
 		if (ret != 0) {
-			RTE_LOG(INFO, LATENCY_STATS,
-				"Error during getting device (port %u) info: %s\n",
+			LATENCY_STATS_LOG(INFO,
+				"Error during getting device (port %u) info: %s",
 				pid, strerror(-ret));
 
 			continue;
@@ -318,28 +325,28 @@ rte_latencystats_uninit(void)
 			cbs = &rx_cbs[pid][qid];
 			ret = rte_eth_remove_rx_callback(pid, qid, cbs->cb);
 			if (ret)
-				RTE_LOG(INFO, LATENCY_STATS, "failed to "
+				LATENCY_STATS_LOG(INFO, "failed to "
 					"remove Rx callback for pid=%d, "
-					"qid=%d\n", pid, qid);
+					"qid=%d", pid, qid);
 		}
 		for (qid = 0; qid < dev_info.nb_tx_queues; qid++) {
 			cbs = &tx_cbs[pid][qid];
 			ret = rte_eth_remove_tx_callback(pid, qid, cbs->cb);
 			if (ret)
-				RTE_LOG(INFO, LATENCY_STATS, "failed to "
+				LATENCY_STATS_LOG(INFO, "failed to "
 					"remove Tx callback for pid=%d, "
-					"qid=%d\n", pid, qid);
+					"qid=%d", pid, qid);
 		}
 	}
 
 	/* free up the memzone */
 	mz = rte_memzone_lookup(MZ_RTE_LATENCY_STATS);
-	if (mz)
-		rte_memzone_free(mz);
+	rte_memzone_free(mz);
 
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_latencystats_get_names)
 int
 rte_latencystats_get_names(struct rte_metric_name *names, uint16_t size)
 {
@@ -355,6 +362,7 @@ rte_latencystats_get_names(struct rte_metric_name *names, uint16_t size)
 	return NUM_LATENCY_STATS;
 }
 
+RTE_EXPORT_SYMBOL(rte_latencystats_get)
 int
 rte_latencystats_get(struct rte_metric_value *values, uint16_t size)
 {
@@ -365,8 +373,8 @@ rte_latencystats_get(struct rte_metric_value *values, uint16_t size)
 		const struct rte_memzone *mz;
 		mz = rte_memzone_lookup(MZ_RTE_LATENCY_STATS);
 		if (mz == NULL) {
-			RTE_LOG(ERR, LATENCY_STATS,
-				"Latency stats memzone not found\n");
+			LATENCY_STATS_LOG(ERR,
+				"Latency stats memzone not found");
 			return -ENOMEM;
 		}
 		glob_stats =  mz->addr;

@@ -37,6 +37,9 @@
  *  - rte_event_eth_tx_adapter_instance_get()
  *  - rte_event_eth_tx_adapter_queue_start()
  *  - rte_event_eth_tx_adapter_queue_stop()
+ *  - rte_event_eth_tx_adapter_runtime_params_get()
+ *  - rte_event_eth_tx_adapter_runtime_params_init()
+ *  - rte_event_eth_tx_adapter_runtime_params_set()
  *
  * The application creates the adapter using
  * rte_event_eth_tx_adapter_create() or rte_event_eth_tx_adapter_create_ext().
@@ -73,16 +76,16 @@
  * impact due to a change in how the transmit queue index is specified.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
 #include <rte_mbuf.h>
 
 #include "rte_eventdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Adapter configuration structure
@@ -101,6 +104,37 @@ struct rte_event_eth_tx_adapter_conf {
 	 * max_nb_tx mbufs. This isn't treated as a requirement; batching may
 	 * cause the adapter to process more than max_nb_tx mbufs.
 	 */
+};
+
+/**
+ * Adapter runtime configuration parameters
+ */
+struct rte_event_eth_tx_adapter_runtime_params {
+	uint32_t max_nb_tx;
+	/**< The adapter can return early if it has processed at least
+	 * max_nb_tx mbufs. This isn't treated as a requirement; batching may
+	 * cause the adapter to process more than max_nb_tx mbufs.
+	 *
+	 * rte_event_eth_tx_adapter_create() configures the
+	 * adapter with default value of max_nb_tx.
+	 * rte_event_eth_tx_adapter_create_ext() configures the adapter with
+	 * user provided value of max_nb_tx through
+	 * rte_event_eth_tx_adapter_conf::max_nb_tx parameter.
+	 * rte_event_eth_tx_adapter_runtime_params_set() allows to re-configure
+	 * max_nb_tx during runtime (after adding at least one queue)
+	 *
+	 * This is valid for the devices without
+	 * RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT capability.
+	 */
+	uint16_t flush_threshold;
+	/**< the number of service function iteration count to
+	 * flush buffered packets.
+	 *
+	 * This is valid for the devices without
+	 * RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT capability.
+	 */
+	uint16_t rsvd[29];
+	/**< Reserved fields for future expansion */
 };
 
 /**
@@ -458,7 +492,6 @@ rte_event_eth_tx_adapter_service_id_get(uint8_t id, uint32_t *service_id);
  *  -  0: Success
  *  - <0: Error code on failure
  */
-__rte_experimental
 int
 rte_event_eth_tx_adapter_instance_get(uint16_t eth_dev_id,
 				      uint16_t tx_queue_id,
@@ -493,7 +526,6 @@ rte_event_eth_tx_adapter_instance_get(uint16_t eth_dev_id,
  *   - 0: Success
  *   - <0: Error code on failure
  */
-__rte_experimental
 int
 rte_event_eth_tx_adapter_queue_start(uint16_t eth_dev_id, uint16_t tx_queue_id);
 
@@ -512,9 +544,63 @@ rte_event_eth_tx_adapter_queue_start(uint16_t eth_dev_id, uint16_t tx_queue_id);
  *   - 0: Success
  *   - <0: Error code on failure
  */
-__rte_experimental
 int
 rte_event_eth_tx_adapter_queue_stop(uint16_t eth_dev_id, uint16_t tx_queue_id);
+
+/**
+ * Initialize the adapter runtime configuration parameters with default values
+ *
+ * @param txa_params
+ *  A pointer to structure of type struct rte_event_eth_tx_adapter_runtime_params
+ *
+ * @return
+ *  -  0: Success
+ *  - <0: Error code on failure
+ */
+__rte_experimental
+int
+rte_event_eth_tx_adapter_runtime_params_init(
+		struct rte_event_eth_tx_adapter_runtime_params *txa_params);
+
+/**
+ * Set the runtime configuration parameters for adapter.
+ *
+ * @param id
+ *  Adapter identifier
+ * @param params
+ *  A pointer to structure of type struct rte_event_eth_tx_adapter_runtime_params
+ *  with configuration parameter values. The reserved fields of this structure
+ *  must be initialized to zero and the valid fields need to be set appropriately.
+ *  This structure can be initialized using
+ *  rte_event_eth_tx_adapter_runtime_params_init() API to default values or
+ *  application may reset this structure and update required fields.
+ *
+ * @return
+ * -  0: Success
+ * - <0: Error code on failure
+ */
+__rte_experimental
+int
+rte_event_eth_tx_adapter_runtime_params_set(uint8_t id,
+		struct rte_event_eth_tx_adapter_runtime_params *params);
+
+/**
+ * Get the runtime configuration parameters of adapter.
+ *
+ * @param id
+ *  Adapter identifier
+ * @param[out] params
+ *  A pointer to structure of type struct rte_event_eth_tx_adapter_runtime_params
+ *  containing valid Tx adapter parameters when return value is 0.
+ *
+ * @return
+ * -  0: Success
+ * - <0: Error code on failure
+ */
+__rte_experimental
+int
+rte_event_eth_tx_adapter_runtime_params_get(uint8_t id,
+		struct rte_event_eth_tx_adapter_runtime_params *params);
 
 #ifdef __cplusplus
 }

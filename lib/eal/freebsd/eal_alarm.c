@@ -4,6 +4,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <pthread.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,13 +12,14 @@
 #include <time.h>
 #include <errno.h>
 
+#include <eal_export.h>
+#include <eal_trace_internal.h>
 #include <rte_alarm.h>
 #include <rte_cycles.h>
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_interrupts.h>
 #include <rte_spinlock.h>
-#include <rte_eal_trace.h>
 
 #include "eal_private.h"
 #include "eal_alarm_private.h"
@@ -58,7 +60,7 @@ rte_eal_alarm_init(void)
 
 	intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
 	if (intr_handle == NULL) {
-		RTE_LOG(ERR, EAL, "Fail to allocate intr_handle\n");
+		EAL_LOG(ERR, "Fail to allocate intr_handle");
 		goto error;
 	}
 
@@ -171,11 +173,11 @@ eal_alarm_callback(void *arg __rte_unused)
 	struct timespec now;
 	struct alarm_entry *ap;
 
-	rte_spinlock_lock(&alarm_list_lk);
-	ap = LIST_FIRST(&alarm_list);
-
 	if (clock_gettime(CLOCK_TYPE_ID, &now) < 0)
 		return;
+
+	rte_spinlock_lock(&alarm_list_lk);
+	ap = LIST_FIRST(&alarm_list);
 
 	while (ap != NULL && timespec_cmp(&now, &ap->time) >= 0) {
 		ap->executing = 1;
@@ -199,6 +201,7 @@ eal_alarm_callback(void *arg __rte_unused)
 }
 
 
+RTE_EXPORT_SYMBOL(rte_eal_alarm_set)
 int
 rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 {
@@ -251,6 +254,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_eal_alarm_cancel)
 int
 rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 {
@@ -317,7 +321,13 @@ rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 			}
 			ap_prev = ap;
 		}
+
 		rte_spinlock_unlock(&alarm_list_lk);
+
+		/* Yield control to a second thread executing eal_alarm_callback to avoid
+		 * its starvation, as it is waiting for the lock we have just released.
+		 */
+		sched_yield();
 	} while (executing != 0);
 
 	if (count == 0 && err == 0)

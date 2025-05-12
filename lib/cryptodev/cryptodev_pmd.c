@@ -6,6 +6,7 @@
 #include <sys/queue.h>
 
 #include <dev_driver.h>
+#include <eal_export.h>
 #include <rte_errno.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
@@ -21,6 +22,9 @@ rte_cryptodev_pmd_parse_name_arg(const char *key __rte_unused,
 {
 	struct rte_cryptodev_pmd_init_params *params = extra_args;
 	int n;
+
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
 
 	n = strlcpy(params->name, value, RTE_CRYPTODEV_NAME_MAX_LEN);
 	if (n >= RTE_CRYPTODEV_NAME_MAX_LEN)
@@ -38,6 +42,10 @@ rte_cryptodev_pmd_parse_uint_arg(const char *key __rte_unused,
 {
 	int i;
 	char *end;
+
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
 	errno = 0;
 
 	i = strtol(value, &end, 10);
@@ -48,6 +56,7 @@ rte_cryptodev_pmd_parse_uint_arg(const char *key __rte_unused,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_cryptodev_pmd_parse_input_args)
 int
 rte_cryptodev_pmd_parse_input_args(
 		struct rte_cryptodev_pmd_init_params *params,
@@ -91,6 +100,7 @@ free_kvlist:
 	return ret;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_cryptodev_pmd_create)
 struct rte_cryptodev *
 rte_cryptodev_pmd_create(const char *name,
 		struct rte_device *device,
@@ -141,6 +151,7 @@ rte_cryptodev_pmd_create(const char *name,
 	return cryptodev;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_cryptodev_pmd_destroy)
 int
 rte_cryptodev_pmd_destroy(struct rte_cryptodev *cryptodev)
 {
@@ -164,6 +175,7 @@ rte_cryptodev_pmd_destroy(struct rte_cryptodev *cryptodev)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_cryptodev_pmd_probing_finish)
 void
 rte_cryptodev_pmd_probing_finish(struct rte_cryptodev *cryptodev)
 {
@@ -202,6 +214,7 @@ dummy_crypto_dequeue_burst(__rte_unused void *qp,
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(cryptodev_fp_ops_reset)
 void
 cryptodev_fp_ops_reset(struct rte_crypto_fp_ops *fp_ops)
 {
@@ -220,6 +233,7 @@ cryptodev_fp_ops_reset(struct rte_crypto_fp_ops *fp_ops)
 	*fp_ops = dummy;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(cryptodev_fp_ops_set)
 void
 cryptodev_fp_ops_set(struct rte_crypto_fp_ops *fp_ops,
 		     const struct rte_cryptodev *dev)
@@ -229,8 +243,10 @@ cryptodev_fp_ops_set(struct rte_crypto_fp_ops *fp_ops,
 	fp_ops->qp.data = dev->data->queue_pairs;
 	fp_ops->qp.enq_cb = dev->enq_cbs;
 	fp_ops->qp.deq_cb = dev->deq_cbs;
+	fp_ops->qp_depth_used = dev->qp_depth_used;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_cryptodev_session_event_mdata_get)
 void *
 rte_cryptodev_session_event_mdata_get(struct rte_crypto_op *op)
 {

@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <eal_export.h>
 #include <rte_log.h>
 #include <rte_errno.h>
 
@@ -79,6 +80,7 @@ bpf_check_xsym(const struct rte_bpf_xsym *xsym)
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_bpf_load)
 struct rte_bpf *
 rte_bpf_load(const struct rte_bpf_prm *prm)
 {
@@ -98,7 +100,7 @@ rte_bpf_load(const struct rte_bpf_prm *prm)
 
 	if (rc != 0) {
 		rte_errno = -rc;
-		RTE_BPF_LOG(ERR, "%s: %d-th xsym is invalid\n", __func__, i);
+		RTE_BPF_LOG_LINE(ERR, "%s: %d-th xsym is invalid", __func__, i);
 		return NULL;
 	}
 
@@ -108,9 +110,9 @@ rte_bpf_load(const struct rte_bpf_prm *prm)
 		return NULL;
 	}
 
-	rc = bpf_validate(bpf);
+	rc = __rte_bpf_validate(bpf);
 	if (rc == 0) {
-		bpf_jit(bpf);
+		__rte_bpf_jit(bpf);
 		if (mprotect(bpf, bpf->sz, PROT_READ) != 0)
 			rc = -ENOMEM;
 	}

@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 
+#include <eal_export.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <rte_kvargs.h>
@@ -23,6 +24,9 @@ rte_compressdev_pmd_parse_name_arg(const char *key __rte_unused,
 	struct rte_compressdev_pmd_init_params *params = extra_args;
 	int n;
 
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
 	n = strlcpy(params->name, value, RTE_COMPRESSDEV_NAME_MAX_LEN);
 	if (n >= RTE_COMPRESSDEV_NAME_MAX_LEN)
 		return -EINVAL;
@@ -40,6 +44,9 @@ rte_compressdev_pmd_parse_uint_arg(const char *key __rte_unused,
 	int i;
 	char *end;
 
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
 	errno = 0;
 	i = strtol(value, &end, 10);
 	if (*end != 0 || errno != 0 || i < 0)
@@ -49,6 +56,7 @@ rte_compressdev_pmd_parse_uint_arg(const char *key __rte_unused,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_pmd_parse_input_args)
 int
 rte_compressdev_pmd_parse_input_args(
 		struct rte_compressdev_pmd_init_params *params,
@@ -85,6 +93,7 @@ free_kvlist:
 	return ret;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_pmd_create)
 struct rte_compressdev *
 rte_compressdev_pmd_create(const char *name,
 		struct rte_device *device,
@@ -94,12 +103,12 @@ rte_compressdev_pmd_create(const char *name,
 	struct rte_compressdev *compressdev;
 
 	if (params->name[0] != '\0') {
-		COMPRESSDEV_LOG(INFO, "User specified device name = %s\n",
+		COMPRESSDEV_LOG(INFO, "User specified device name = %s",
 				params->name);
 		name = params->name;
 	}
 
-	COMPRESSDEV_LOG(INFO, "Creating compressdev %s\n", name);
+	COMPRESSDEV_LOG(INFO, "Creating compressdev %s", name);
 
 	COMPRESSDEV_LOG(INFO, "Init parameters - name: %s, socket id: %d",
 			name, params->socket_id);
@@ -134,6 +143,7 @@ rte_compressdev_pmd_create(const char *name,
 	return compressdev;
 }
 
+RTE_EXPORT_SYMBOL(rte_compressdev_pmd_destroy)
 int
 rte_compressdev_pmd_destroy(struct rte_compressdev *compressdev)
 {

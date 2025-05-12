@@ -11,6 +11,7 @@
 #include <rte_errno.h>
 #include <rte_log.h>
 
+#include <eal_export.h>
 #include "eal_private.h"
 
 #ifdef RTE_EXEC_ENV_LINUX
@@ -29,8 +30,8 @@ mem_map(void *requested_addr, size_t size, int prot, int flags,
 {
 	void *virt = mmap(requested_addr, size, prot, flags, fd, offset);
 	if (virt == MAP_FAILED) {
-		RTE_LOG(DEBUG, EAL,
-		    "Cannot mmap(%p, 0x%zx, 0x%x, 0x%x, %d, 0x%"PRIx64"): %s\n",
+		EAL_LOG(DEBUG,
+		    "Cannot mmap(%p, 0x%zx, 0x%x, 0x%x, %d, 0x%"PRIx64"): %s",
 		    requested_addr, size, prot, flags, fd, offset,
 		    strerror(errno));
 		rte_errno = errno;
@@ -44,7 +45,7 @@ mem_unmap(void *virt, size_t size)
 {
 	int ret = munmap(virt, size);
 	if (ret < 0) {
-		RTE_LOG(DEBUG, EAL, "Cannot munmap(%p, 0x%zx): %s\n",
+		EAL_LOG(DEBUG, "Cannot munmap(%p, 0x%zx): %s",
 			virt, size, strerror(errno));
 		rte_errno = errno;
 	}
@@ -83,7 +84,7 @@ eal_mem_set_dump(void *virt, size_t size, bool dump)
 	int flags = dump ? EAL_DODUMP : EAL_DONTDUMP;
 	int ret = madvise(virt, size, flags);
 	if (ret) {
-		RTE_LOG(DEBUG, EAL, "madvise(%p, %#zx, %d) failed: %s\n",
+		EAL_LOG(DEBUG, "madvise(%p, %#zx, %d) failed: %s",
 				virt, size, flags, strerror(rte_errno));
 		rte_errno = errno;
 	}
@@ -105,6 +106,7 @@ mem_rte_to_sys_prot(int prot)
 	return sys_prot;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mem_map)
 void *
 rte_mem_map(void *requested_addr, size_t size, int prot, int flags,
 	int fd, uint64_t offset)
@@ -126,12 +128,14 @@ rte_mem_map(void *requested_addr, size_t size, int prot, int flags,
 	return mem_map(requested_addr, size, sys_prot, sys_flags, fd, offset);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mem_unmap)
 int
 rte_mem_unmap(void *virt, size_t size)
 {
 	return mem_unmap(virt, size);
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mem_page_size)
 size_t
 rte_mem_page_size(void)
 {
@@ -143,6 +147,7 @@ rte_mem_page_size(void)
 	return page_size;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(rte_mem_lock)
 int
 rte_mem_lock(const void *virt, size_t size)
 {

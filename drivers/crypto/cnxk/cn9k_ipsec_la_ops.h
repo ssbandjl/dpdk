@@ -9,6 +9,8 @@
 #include <rte_esp.h>
 #include <rte_security.h>
 
+#include "roc_ie.h"
+
 #include "cn9k_ipsec.h"
 #include "cnxk_cryptodev_ops.h"
 #include "cnxk_security_ar.h"
@@ -26,13 +28,13 @@ ipsec_po_out_rlen_get(struct cn9k_sec_session *sess, uint32_t plen, struct rte_m
 		uintptr_t data = (uintptr_t)m_src->buf_addr + m_src->data_off;
 		struct rte_ipv4_hdr *ip = (struct rte_ipv4_hdr *)data;
 
-		if (unlikely(((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) != IPVERSION)) {
+		if (unlikely(ip->version != IPVERSION)) {
 			struct rte_ipv6_hdr *ip6 = (struct rte_ipv6_hdr *)ip;
 			uint8_t *nxt_hdr = (uint8_t *)ip6;
 			uint8_t dest_op_cnt = 0;
 			int nh = ip6->proto;
 
-			PLT_ASSERT(((ip->version_ihl & 0xf0) >> RTE_IPV4_IHL_MULTIPLIER) == 6);
+			PLT_ASSERT(ip->version == 6);
 
 			adj_len = ROC_CPT_TUNNEL_IPV6_HDR_LEN;
 			nxt_hdr += ROC_CPT_TUNNEL_IPV6_HDR_LEN;
@@ -80,16 +82,10 @@ process_outb_sa(struct cpt_qp_meta_info *m_info, struct rte_crypto_op *cop,
 	extend_tail = rlen - dlen;
 	pkt_len += extend_tail;
 
-	if (likely(m_src->next == NULL)) {
+	if (likely((m_src->next == NULL) && (hdr_len <= data_off))) {
 		if (unlikely(extend_tail > rte_pktmbuf_tailroom(m_src))) {
 			plt_dp_err("Not enough tail room (required: %d, available: %d)",
 				   extend_tail, rte_pktmbuf_tailroom(m_src));
-			return -ENOMEM;
-		}
-
-		if (unlikely(hdr_len > data_off)) {
-			plt_dp_err("Not enough head room (required: %d, available: %d)", hdr_len,
-				   rte_pktmbuf_headroom(m_src));
 			return -ENOMEM;
 		}
 
@@ -136,7 +132,7 @@ process_outb_sa(struct cpt_qp_meta_info *m_info, struct rte_crypto_op *cop,
 		gather_comp = (struct roc_sglist_comp *)((uint8_t *)m_data + 8);
 
 		i = fill_sg_comp(gather_comp, i, (uint64_t)hdr, hdr_len);
-		i = fill_ipsec_sg_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(gather_comp, i, m_src);
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 
 		g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -150,7 +146,7 @@ process_outb_sa(struct cpt_qp_meta_info *m_info, struct rte_crypto_op *cop,
 		scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
 		i = fill_sg_comp(scatter_comp, i, (uint64_t)hdr, hdr_len);
-		i = fill_ipsec_sg_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(scatter_comp, i, m_src);
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
 
 		s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -232,7 +228,7 @@ process_inb_sa(struct cpt_qp_meta_info *m_info, struct rte_crypto_op *cop,
 		 */
 		i = 0;
 		gather_comp = (struct roc_sglist_comp *)((uint8_t *)m_data + 8);
-		i = fill_ipsec_sg_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(gather_comp, i, m_src);
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 
 		g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -243,7 +239,7 @@ process_inb_sa(struct cpt_qp_meta_info *m_info, struct rte_crypto_op *cop,
 		i = 0;
 		scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 		i = fill_sg_comp(scatter_comp, i, (uint64_t)hdr, hdr_len);
-		i = fill_ipsec_sg_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(scatter_comp, i, m_src);
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
 
 		s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);

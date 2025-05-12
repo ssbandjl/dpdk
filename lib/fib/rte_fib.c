@@ -5,7 +5,9 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <sys/queue.h>
 
+#include <eal_export.h>
 #include <rte_eal_memconfig.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
@@ -16,6 +18,9 @@
 #include <rte_fib.h>
 
 #include "dir24_8.h"
+#include "fib_log.h"
+
+RTE_LOG_REGISTER_DEFAULT(fib_logtype, INFO);
 
 TAILQ_HEAD(rte_fib_list, rte_tailq_entry);
 static struct rte_tailq_elem rte_fib_tailq = {
@@ -38,6 +43,7 @@ EAL_REGISTER_TAILQ(rte_fib_tailq)
 struct rte_fib {
 	char			name[RTE_FIB_NAMESIZE];
 	enum rte_fib_type	type;	/**< Type of FIB struct */
+	unsigned int flags;		/**< Flags */
 	struct rte_rib		*rib;	/**< RIB helper datastructure */
 	void			*dp;	/**< pointer to the dataplane struct*/
 	rte_fib_lookup_fn_t	lookup;	/**< FIB lookup function */
@@ -106,7 +112,7 @@ init_dataplane(struct rte_fib *fib, __rte_unused int socket_id,
 		if (fib->dp == NULL)
 			return -rte_errno;
 		fib->lookup = dir24_8_get_lookup_fn(fib->dp,
-			RTE_FIB_LOOKUP_DEFAULT);
+			RTE_FIB_LOOKUP_DEFAULT, !!(fib->flags & RTE_FIB_F_LOOKUP_NETWORK_ORDER));
 		fib->modify = dir24_8_modify;
 		return 0;
 	default:
@@ -115,6 +121,7 @@ init_dataplane(struct rte_fib *fib, __rte_unused int socket_id,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_add)
 int
 rte_fib_add(struct rte_fib *fib, uint32_t ip, uint8_t depth, uint64_t next_hop)
 {
@@ -124,6 +131,7 @@ rte_fib_add(struct rte_fib *fib, uint32_t ip, uint8_t depth, uint64_t next_hop)
 	return fib->modify(fib, ip, depth, next_hop, RTE_FIB_ADD);
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_delete)
 int
 rte_fib_delete(struct rte_fib *fib, uint32_t ip, uint8_t depth)
 {
@@ -133,6 +141,7 @@ rte_fib_delete(struct rte_fib *fib, uint32_t ip, uint8_t depth)
 	return fib->modify(fib, ip, depth, 0, RTE_FIB_DEL);
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_lookup_bulk)
 int
 rte_fib_lookup_bulk(struct rte_fib *fib, uint32_t *ips,
 	uint64_t *next_hops, int n)
@@ -144,6 +153,7 @@ rte_fib_lookup_bulk(struct rte_fib *fib, uint32_t *ips,
 	return 0;
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_create)
 struct rte_fib *
 rte_fib_create(const char *name, int socket_id, struct rte_fib_conf *conf)
 {
@@ -157,6 +167,7 @@ rte_fib_create(const char *name, int socket_id, struct rte_fib_conf *conf)
 
 	/* Check user arguments. */
 	if ((name == NULL) || (conf == NULL) ||	(conf->max_routes < 0) ||
+			(conf->flags & ~RTE_FIB_ALLOWED_FLAGS) ||
 			(conf->type > RTE_FIB_DIR24_8)) {
 		rte_errno = EINVAL;
 		return NULL;
@@ -167,8 +178,8 @@ rte_fib_create(const char *name, int socket_id, struct rte_fib_conf *conf)
 
 	rib = rte_rib_create(name, socket_id, &rib_conf);
 	if (rib == NULL) {
-		RTE_LOG(ERR, LPM,
-			"Can not allocate RIB %s\n", name);
+		FIB_LOG(ERR,
+			"Can not allocate RIB %s", name);
 		return NULL;
 	}
 
@@ -192,8 +203,8 @@ rte_fib_create(const char *name, int socket_id, struct rte_fib_conf *conf)
 	/* allocate tailq entry */
 	te = rte_zmalloc("FIB_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
-		RTE_LOG(ERR, LPM,
-			"Can not allocate tailq entry for FIB %s\n", name);
+		FIB_LOG(ERR,
+			"Can not allocate tailq entry for FIB %s", name);
 		rte_errno = ENOMEM;
 		goto exit;
 	}
@@ -202,7 +213,7 @@ rte_fib_create(const char *name, int socket_id, struct rte_fib_conf *conf)
 	fib = rte_zmalloc_socket(mem_name,
 		sizeof(struct rte_fib),	RTE_CACHE_LINE_SIZE, socket_id);
 	if (fib == NULL) {
-		RTE_LOG(ERR, LPM, "FIB %s memory allocation failed\n", name);
+		FIB_LOG(ERR, "FIB %s memory allocation failed", name);
 		rte_errno = ENOMEM;
 		goto free_te;
 	}
@@ -210,12 +221,13 @@ rte_fib_create(const char *name, int socket_id, struct rte_fib_conf *conf)
 	rte_strlcpy(fib->name, name, sizeof(fib->name));
 	fib->rib = rib;
 	fib->type = conf->type;
+	fib->flags = conf->flags;
 	fib->def_nh = conf->default_nh;
 	ret = init_dataplane(fib, socket_id, conf);
 	if (ret < 0) {
-		RTE_LOG(ERR, LPM,
+		FIB_LOG(ERR,
 			"FIB dataplane struct %s memory allocation failed "
-			"with err %d\n", name, ret);
+			"with err %d", name, ret);
 		rte_errno = -ret;
 		goto free_fib;
 	}
@@ -238,6 +250,7 @@ exit:
 	return NULL;
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_find_existing)
 struct rte_fib *
 rte_fib_find_existing(const char *name)
 {
@@ -276,6 +289,7 @@ free_dataplane(struct rte_fib *fib)
 	}
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_free)
 void
 rte_fib_free(struct rte_fib *fib)
 {
@@ -305,18 +319,21 @@ rte_fib_free(struct rte_fib *fib)
 	rte_free(te);
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_get_dp)
 void *
 rte_fib_get_dp(struct rte_fib *fib)
 {
 	return (fib == NULL) ? NULL : fib->dp;
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_get_rib)
 struct rte_rib *
 rte_fib_get_rib(struct rte_fib *fib)
 {
 	return (fib == NULL) ? NULL : fib->rib;
 }
 
+RTE_EXPORT_SYMBOL(rte_fib_select_lookup)
 int
 rte_fib_select_lookup(struct rte_fib *fib,
 	enum rte_fib_lookup_type type)
@@ -325,12 +342,28 @@ rte_fib_select_lookup(struct rte_fib *fib,
 
 	switch (fib->type) {
 	case RTE_FIB_DIR24_8:
-		fn = dir24_8_get_lookup_fn(fib->dp, type);
+		fn = dir24_8_get_lookup_fn(fib->dp, type,
+			!!(fib->flags & RTE_FIB_F_LOOKUP_NETWORK_ORDER));
 		if (fn == NULL)
 			return -EINVAL;
 		fib->lookup = fn;
 		return 0;
 	default:
 		return -EINVAL;
+	}
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_fib_rcu_qsbr_add, 24.11)
+int
+rte_fib_rcu_qsbr_add(struct rte_fib *fib, struct rte_fib_rcu_config *cfg)
+{
+	if (fib == NULL)
+		return -EINVAL;
+
+	switch (fib->type) {
+	case RTE_FIB_DIR24_8:
+		return dir24_8_rcu_qsbr_add(fib->dp, cfg, fib->name);
+	default:
+		return -ENOTSUP;
 	}
 }
